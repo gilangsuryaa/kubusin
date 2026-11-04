@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Kubus Rubik 3D — mainkan rubik di browser lewat keyboard";
+export const alt = "Kubusin — kubus Rubik 3D di browser lewat keyboard";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -31,7 +31,7 @@ export default function OpengraphImage() {
               color: "#ff7a3d",
             }}
           >
-            Rubik&apos;s Cube 3D
+            Kubus Rubik 3D
           </div>
           <div
             style={{
@@ -43,7 +43,7 @@ export default function OpengraphImage() {
               color: "#f3f1ea",
             }}
           >
-            Kubus Rubik 3D
+            Kubusin
           </div>
           <div
             style={{

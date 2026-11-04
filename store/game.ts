@@ -36,7 +36,7 @@ export interface BestTime {
   readonly at: number;
 }
 
-export const BEST_TIMES_KEY = "rubik3d.best-times.v1";
+export const BEST_TIMES_KEY = "kubusin.best-times.v1";
 export const BEST_TIMES_LIMIT = 10;
 /** Layer turn length in milliseconds. */
 export const MOVE_DURATION_MS = 170;

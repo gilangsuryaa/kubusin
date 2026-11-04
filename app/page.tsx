@@ -3,7 +3,7 @@ import { GameShell } from "@/components/GameShell";
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "Kubus Rubik 3D",
+  name: "Kubusin",
   applicationCategory: "GameApplication",
   operatingSystem: "Web",
   inLanguage: "id",

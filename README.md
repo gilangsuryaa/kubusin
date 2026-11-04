@@ -1,6 +1,6 @@
-# Kubus Rubik 3D
+# Kubusin
 
-Rubik's Cube 3D yang dimainkan langsung di browser: putar tiap sisi lewat
+Kubus Rubik 3D yang dimainkan langsung di browser: putar tiap sisi lewat
 keyboard atau sentuhan, acak kubus, ukur waktu, dan simpan sepuluh rekor
 terbaikmu di perangkat.
 
@@ -196,7 +196,7 @@ Tanpa konfigurasi tambahan.
    `pnpm build`, output standar Next.js.
 4. Klik **Deploy**. Selesai.
 5. Opsional: set environment variable `NEXT_PUBLIC_SITE_URL` ke domain
-   produksi (mis. `https://rubik-3d.vercel.app`) agar URL kanonik dan gambar
+   produksi (mis. `https://kubusin.vercel.app`) agar URL kanonik dan gambar
    Open Graph memakai alamat yang benar.
 
 Atau lewat CLI:

@@ -8,18 +8,19 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://rubik-3d.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kubusin.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Kubus Rubik 3D — Mainkan lewat Keyboard",
-    template: "%s · Kubus Rubik 3D",
+    default: "Kubusin — Kubus Rubik 3D di Browser",
+    template: "%s · Kubusin",
   },
   description:
-    "Mainkan Rubik's Cube 3D di browser. Putar sisi dengan keyboard atau sentuhan, acak kubus, ukur waktu, dan simpan sepuluh rekor terbaikmu.",
-  applicationName: "Kubus Rubik 3D",
+    "Kubus Rubik 3D yang dimainkan di browser. Putar sisi dengan keyboard atau sentuhan, acak kubus, ukur waktu, dan simpan sepuluh rekor terbaikmu.",
+  applicationName: "Kubusin",
   keywords: [
+    "kubusin",
     "rubik",
     "rubik's cube",
     "kubus rubik 3d",
@@ -27,20 +28,20 @@ export const metadata: Metadata = {
     "speedcubing",
     "game browser",
   ],
-  authors: [{ name: "Kubus Rubik 3D" }],
+  authors: [{ name: "Kubusin" }],
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "id_ID",
     url: siteUrl,
-    siteName: "Kubus Rubik 3D",
-    title: "Kubus Rubik 3D — Mainkan lewat Keyboard",
+    siteName: "Kubusin",
+    title: "Kubusin — Kubus Rubik 3D di Browser",
     description:
       "Kubus Rubik 3D yang dimainkan lewat keyboard. Acak, putar tiap sisi, ukur waktu, dan kejar rekor terbaikmu.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kubus Rubik 3D — Mainkan lewat Keyboard",
+    title: "Kubusin — Kubus Rubik 3D di Browser",
     description:
       "Kubus Rubik 3D yang dimainkan lewat keyboard. Acak, putar tiap sisi, ukur waktu, dan kejar rekor terbaikmu.",
   },
@@ -60,7 +61,7 @@ export const viewport = {
  * Runs before paint so a stored theme is on <html> with no flash. Kept as a
  * literal here: the layout is static, so this ships in the initial HTML.
  */
-const themeScript = `(function(){try{var t=localStorage.getItem("rubik3d.theme.v1");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t}}catch(e){}})();`;
+const themeScript = `(function(){try{var t=localStorage.getItem("kubusin.theme.v1");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t}}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

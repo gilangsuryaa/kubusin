@@ -85,7 +85,7 @@ export function GameShell() {
         <header className="flex items-start justify-between gap-4 lg:col-span-2">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Kubus Rubik 3D
+              Kubusin
             </h1>
             <p className="mt-1 max-w-md text-xs leading-relaxed text-ink-soft sm:text-sm">
               Putar tiap sisi lewat keyboard atau sentuhan. Waktu mulai pada

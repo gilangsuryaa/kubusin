@@ -5,10 +5,10 @@ import { useCallback, useSyncExternalStore } from "react";
 export type Theme = "light" | "dark";
 
 /** Stored key. Absent means "follow the system". */
-export const THEME_STORAGE_KEY = "rubik3d.theme.v1";
+export const THEME_STORAGE_KEY = "kubusin.theme.v1";
 
 /** Same event the inline boot script uses, kept in sync in one place. */
-const THEME_EVENT = "rubik3d:theme";
+const THEME_EVENT = "kubusin:theme";
 
 const THEME_COLOR: Record<Theme, string> = {
   light: "#f4f2ed",
