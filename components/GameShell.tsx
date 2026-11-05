@@ -12,9 +12,11 @@ import { MoveTracker } from "@/components/ui/MoveTracker";
 import { OrientationPanel } from "@/components/ui/OrientationPanel";
 import { ResetDialog } from "@/components/ui/ResetDialog";
 import { SolveGuide } from "@/components/ui/SolveGuide";
+import { SoundToggle } from "@/components/ui/SoundToggle";
 import { StatsPanel } from "@/components/ui/StatsPanel";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { WinOverlay } from "@/components/ui/WinOverlay";
+import { useCubeSound } from "@/hooks/useCubeSound";
 import { usePrefersReducedMotion } from "@/hooks/useMediaQuery";
 import { useKeyboard } from "@/hooks/useKeyboard";
 import { useGameStore } from "@/store/game";
@@ -45,6 +47,8 @@ export function GameShell() {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useCubeSound();
 
   const interactive = introDone || reducedMotion;
   const winOpen = status === "solved" && dismissedSolve !== startedAt;
@@ -96,6 +100,7 @@ export function GameShell() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <SoundToggle />
             <ThemeToggle />
             <Button
               variant="outline"

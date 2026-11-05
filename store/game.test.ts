@@ -19,6 +19,7 @@ function resetStore(): void {
     orientation: DEFAULT_ORIENTATION,
     runScrambled: false,
     assist: false,
+    soundOn: true,
   });
 }
 
@@ -260,5 +261,20 @@ describe("move tracker", () => {
     useGameStore.getState().requestReset();
     expect(useGameStore.getState().history).toEqual([]);
     expect(useGameStore.getState().scramble).toEqual([]);
+  });
+});
+
+describe("sound preference", () => {
+  beforeEach(resetStore);
+
+  it("defaults to on", () => {
+    expect(useGameStore.getState().soundOn).toBe(true);
+  });
+
+  it("flips when toggled", () => {
+    useGameStore.getState().toggleSound();
+    expect(useGameStore.getState().soundOn).toBe(false);
+    useGameStore.getState().toggleSound();
+    expect(useGameStore.getState().soundOn).toBe(true);
   });
 });

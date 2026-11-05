@@ -39,7 +39,8 @@ pnpm test       # unit test (Vitest)
 
 Mouse dan sentuhan: seret untuk memutar kamera, scroll/cubit untuk zoom. Tombol
 di layar (`Acak`, `Urungkan`, `Reset`, toggle `W`, tombol arah, tombol slice)
-melakukan hal yang sama. Tombol tema di header berganti terang/gelap.
+melakukan hal yang sama. Tombol tema di header berganti terang/gelap, dan tombol
+pengeras suara menyalakan atau mematikan efek suara.
 
 ## Orientasi
 
@@ -71,6 +72,13 @@ acakan (saat sistem mengacak) dan setiap langkah yang kamu putar, berurutan.
 Undo tercatat sebagai langkah kebalikannya, karena itulah yang benar-benar
 terjadi pada kubus. Tombol **Salin** menyalin keduanya sebagai teks.
 
+## Efek suara
+
+Setiap putaran sisi berbunyi klik pendek, dan kubus yang selesai memainkan
+nada naik singkat. Suara disintesis di browser lewat Web Audio API, jadi tidak
+ada berkas audio yang diunduh. Tombol pengeras suara di header mematikan atau
+menyalakan suara, dan pilihannya disimpan di perangkat.
+
 ## Tangkapan layar
 
 Tema gelap dengan panduan penyelesaian bertahap, orientasi terkunci, statistik
@@ -86,13 +94,14 @@ components/cube/         rendering 3D (Canvas, cubie, animasi layer)
 components/ui/           tombol, statistik, rekor, orientasi, panduan, pencatat, bantuan, overlay
 components/GameShell.tsx penyusun UI + penghubung store dan keyboard
 docs/                    tangkapan layar untuk README
-hooks/                   useKeyboard, useElapsed, useMediaQuery, useTheme
+hooks/                   useKeyboard, useElapsed, useMediaQuery, useTheme, useCubeSound
 lib/cube.ts              model kubus murni (tanpa three.js), 27 cubie
 lib/stages.ts            mesin pencari tahap generik (reduced-state BFS)
 lib/beginner.ts          solver metode pemula, tujuh tahap
 lib/facelets.ts          cubie -> string facelet standar URFDLB
 lib/optimal.ts           solusi optimal via rubik-solver
 lib/guide.ts             pembanding keadaan kubus untuk kursor panduan
+lib/sound.ts             efek suara sintetis via Web Audio API
 store/game.ts            state permainan (langkah, antrean, timer, rekor, acakan, riwayat)
 ```
 
@@ -100,12 +109,12 @@ Logika kubus terpisah dari tampilan dan diuji langsung di Node.
 
 ## Test
 
-`pnpm test` menjalankan 76 tes: `lib/cube.test.ts` (model kubus: langkah,
+`pnpm test` menjalankan 80 tes: `lib/cube.test.ts` (model kubus: langkah,
 slice, wide, orientasi, acak, deteksi selesai), `store/game.test.ts` (alur
-sesi, antrean, undo, gating rekor, panduan, pencatat gerakan),
-`lib/guide.test.ts` (pembanding keadaan kubus dan kursor rencana), dan
-`lib/solver.test.ts` (solver metode pemula, batas antar tahap, facelet, dan
-solusi optimal).
+sesi, antrean, undo, gating rekor, panduan, pencatat gerakan, preferensi suara),
+`lib/guide.test.ts` (pembanding keadaan kubus dan kursor rencana),
+`lib/sound.test.ts` (efek suara aman tanpa Web Audio), dan `lib/solver.test.ts`
+(solver metode pemula, batas antar tahap, facelet, dan solusi optimal).
 
 ## Lisensi
 

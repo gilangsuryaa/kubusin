@@ -38,6 +38,8 @@ export interface BestTime {
 
 export const BEST_TIMES_KEY = "kubusin.best-times.v1";
 export const BEST_TIMES_LIMIT = 10;
+/** Storage key for the sound-effects preference. */
+export const SOUND_KEY = "kubusin.sound.v1";
 /** Layer turn length in milliseconds. */
 export const MOVE_DURATION_MS = 170;
 /** Scramble turns run faster so the shuffle does not feel like a cutscene. */
@@ -85,6 +87,8 @@ interface GameStore {
    * solves do not count as records.
    */
   assist: boolean;
+  /** Sound effects for turns and the win chime. On unless the player opted out. */
+  soundOn: boolean;
 
   requestMove: (name: MoveName, turns: Turns, wide?: boolean) => void;
   /** Change the hold; `front` and `up` must be perpendicular physical faces. */
@@ -93,6 +97,8 @@ interface GameStore {
   rotateCube: (axis: Axis, turns: Turns) => void;
   /** Turn the solver guide on or off; enabling pins the standard hold. */
   setAssist: (enabled: boolean) => void;
+  /** Flip the sound-effects preference and remember it. */
+  toggleSound: () => void;
   requestScramble: () => void;
   requestUndo: () => void;
   requestReset: () => void;
@@ -168,6 +174,25 @@ function writeBestTimes(list: BestTime[]): void {
   }
 }
 
+/** Sound defaults on, so only an explicit "off" turns it down. */
+function readSound(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(SOUND_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function writeSound(on: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SOUND_KEY, on ? "on" : "off");
+  } catch {
+    // Non-fatal: the toggle still works for this session.
+  }
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   cubies: createSolvedCube(),
   queue: [],
@@ -184,6 +209,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   orientation: DEFAULT_ORIENTATION,
   runScrambled: false,
   assist: false,
+  soundOn: true,
 
   requestMove(name, turns, wide = false) {
     const { status, active, orientation } = get();
@@ -224,6 +250,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setAssist(enabled) {
     // Enabling the guide snaps the hold so the shown letters are unambiguous.
     set({ assist: enabled, ...(enabled ? { orientation: DEFAULT_ORIENTATION } : {}) });
+  },
+
+  toggleSound() {
+    set((state) => {
+      const on = !state.soundOn;
+      writeSound(on);
+      return { soundOn: on };
+    });
   },
 
   requestScramble() {
@@ -370,6 +404,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   hydrate() {
-    set({ bestTimes: readBestTimes(), hydrated: true });
+    set({ bestTimes: readBestTimes(), soundOn: readSound(), hydrated: true });
   },
 }));
