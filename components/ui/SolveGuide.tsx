@@ -115,6 +115,12 @@ export function SolveGuide() {
   const nextMove = cursor < flat.length ? flat[cursor] : null;
   const pending = Math.max(0, flat.length - cursor);
 
+  /** Keeps the highlighted step in view while the plan scrolls. */
+  const nextChipRef = useRef<HTMLLIElement | null>(null);
+  useEffect(() => {
+    nextChipRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [cursor]);
+
   async function loadOptimal() {
     setOptimalLoading(true);
     setOptimalError(null);
@@ -129,7 +135,10 @@ export function SolveGuide() {
   }
 
   return (
-    <section aria-labelledby="guide-title" className="border-t border-line pt-4">
+    <section
+      aria-labelledby="guide-title"
+      className="border-t border-line pt-4 lg:flex lg:max-h-[min(74vh,660px)] lg:flex-col"
+    >
       <div className="flex items-center justify-between gap-3">
         <h2
           id="guide-title"
@@ -154,7 +163,7 @@ export function SolveGuide() {
       </p>
 
       {!assist ? null : (
-        <div className="mt-3">
+        <div className="mt-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           {computing ? (
             <p className="text-xs text-ink-soft" role="status">
               Menghitung langkah...
@@ -203,7 +212,10 @@ export function SolveGuide() {
                           {stage.moves.map((move, index) => {
                             const isNext = hasNext && index === cursor - offset;
                             return (
-                              <li key={`${moveToString(move)}-${index}`}>
+                              <li
+                                key={`${moveToString(move)}-${index}`}
+                                ref={isNext ? nextChipRef : undefined}
+                              >
                                 <span
                                   className={`tnum inline-flex min-h-6 items-center rounded-[3px] border px-1.5 text-[11px] font-semibold ${
                                     isNext
