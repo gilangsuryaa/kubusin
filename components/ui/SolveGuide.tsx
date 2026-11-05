@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { solveBeginner, type SolveStage } from "@/lib/beginner";
-import { applyMoves, isSolved, moveToString, type CubeState, type Move } from "@/lib/cube";
-import { sameCube } from "@/lib/guide";
+import { isSolved, moveToString, type CubeState, type Move } from "@/lib/cube";
+import { planCursor } from "@/lib/guide";
 import { solveOptimal } from "@/lib/optimal";
 import { useGameStore } from "@/store/game";
 import { Button } from "./Button";
@@ -19,6 +19,11 @@ import { Button } from "./Button";
  * otherwise be undone by the next replan and the guide would loop on the same
  * few moves. Comparing the real cube state also catches a scramble or reset,
  * which rewrites the cube without any user move to notice.
+ *
+ * The optimal solution is held the same way: one fixed sequence from the cube
+ * it was solved from, walked with its own cursor. Playing one of its steps
+ * advances the highlight; the sequence is only dropped when the cube leaves
+ * the path it predicted.
  */
 export function SolveGuide() {
   const assist = useGameStore((state) => state.assist);
@@ -33,6 +38,7 @@ export function SolveGuide() {
   const [computing, setComputing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [optimal, setOptimal] = useState<Move[] | null>(null);
+  const [optimalCursor, setOptimalCursor] = useState(0);
   const [optimalLoading, setOptimalLoading] = useState(false);
   const [optimalError, setOptimalError] = useState<string | null>(null);
 
@@ -43,6 +49,15 @@ export function SolveGuide() {
   } | null>(null);
   const movesAtStart = useRef(0);
 
+  /**
+   * The optimal solution, held the same way as the staged plan: a fixed move
+   * list tied to the cube it was solved from. The player walks it with a
+   * cursor, so playing one of its steps advances the highlight instead of
+   * discarding the solution and recomputing a different one.
+   */
+  const optimalRef = useRef<{ moves: readonly Move[]; start: CubeState } | null>(null);
+  const optimalMovesAt = useRef(0);
+
   useEffect(() => {
     let cancelled = false;
     // Defer so the toggle paints first and so state is only touched from an
@@ -51,9 +66,11 @@ export function SolveGuide() {
       if (cancelled) return;
       if (!assist) {
         planRef.current = null;
+        optimalRef.current = null;
         setStages(null);
         setError(null);
         setOptimal(null);
+        setOptimalCursor(0);
         setOptimalError(null);
         return;
       }
@@ -63,23 +80,43 @@ export function SolveGuide() {
       // updates when it finishes, so comparing them here would misfire.
       if (active) return;
 
+      // Keep a shown optimal solution in step with the cube. It survives
+      // playing its own steps, but is dropped once the cube leaves the path it
+      // predicted (a different move, a scramble, or a reset).
+      const optimalPlan = optimalRef.current;
+      if (optimalPlan) {
+        const cursorNow = planCursor(
+          optimalPlan.start,
+          optimalPlan.moves,
+          moves.slice(optimalMovesAt.current),
+          cubies,
+        );
+        if (cursorNow !== null) {
+          setOptimalCursor(cursorNow);
+        } else {
+          optimalRef.current = null;
+          setOptimal(null);
+          setOptimalCursor(0);
+        }
+      }
+
       const plan = planRef.current;
       if (plan) {
         const flat = plan.stages.flatMap((stage) => stage.moves);
-        const played = moves.slice(movesAtStart.current);
-        if (played.length <= flat.length) {
-          const expected = applyMoves(plan.start, flat.slice(0, played.length));
-          if (sameCube(expected, cubies)) {
-            setCursor(played.length);
-            return;
-          }
+        const cursorNow = planCursor(
+          plan.start,
+          flat,
+          moves.slice(movesAtStart.current),
+          cubies,
+        );
+        if (cursorNow !== null) {
+          setCursor(cursorNow);
+          return;
         }
       }
 
       setComputing(true);
       setError(null);
-      setOptimal(null);
-      setOptimalError(null);
       try {
         const next = solveBeginner(cubies);
         planRef.current = { stages: next, start: cubies };
@@ -115,18 +152,32 @@ export function SolveGuide() {
   const nextMove = cursor < flat.length ? flat[cursor] : null;
   const pending = Math.max(0, flat.length - cursor);
 
+  const optimalNext = optimal && optimalCursor < optimal.length ? optimal[optimalCursor] : null;
+  const optimalPending = optimal ? Math.max(0, optimal.length - optimalCursor) : 0;
+
   /** Keeps the highlighted step in view while the plan scrolls. */
   const nextChipRef = useRef<HTMLLIElement | null>(null);
   useEffect(() => {
     nextChipRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [cursor]);
 
+  /** Same, for the optimal sequence. */
+  const optimalChipRef = useRef<HTMLLIElement | null>(null);
+  useEffect(() => {
+    optimalChipRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [optimalCursor]);
+
   async function loadOptimal() {
     setOptimalLoading(true);
     setOptimalError(null);
+    const start = cubies;
+    const startMoves = moves.length;
     try {
-      const result = await solveOptimal(cubies);
+      const result = await solveOptimal(start);
+      optimalRef.current = { moves: result, start };
+      optimalMovesAt.current = startMoves;
       setOptimal(result);
+      setOptimalCursor(0);
     } catch {
       setOptimalError("Solusi optimal gagal dihitung.");
     } finally {
@@ -244,7 +295,11 @@ export function SolveGuide() {
                     onClick={loadOptimal}
                     disabled={optimalLoading}
                   >
-                    {optimalLoading ? "Menghitung..." : "Lihat"}
+                    {optimalLoading
+                      ? "Menghitung..."
+                      : optimal
+                        ? "Hitung ulang"
+                        : "Lihat"}
                   </Button>
                 </div>
                 {optimalError ? (
@@ -253,17 +308,33 @@ export function SolveGuide() {
                   </p>
                 ) : optimal ? (
                   <>
-                    <p className="mt-1.5 text-[11px] text-ink-soft">
-                      {optimal.length} langkah
+                    <p className="mt-1.5 text-[11px] text-ink-soft" aria-live="polite">
+                      Langkah berikutnya:{" "}
+                      <span className="font-semibold text-ink">
+                        {optimalNext ? moveToString(optimalNext) : "-"}
+                      </span>{" "}
+                      · {optimalPending} langkah lagi
                     </p>
                     <ul className="mt-1.5 flex flex-wrap gap-1">
-                      {optimal.map((move, index) => (
-                        <li key={`${moveToString(move)}-${index}`}>
-                          <span className="tnum inline-flex min-h-6 items-center rounded-[3px] border border-line px-1.5 text-[11px] font-semibold text-ink-soft">
-                            {moveToString(move)}
-                          </span>
-                        </li>
-                      ))}
+                      {optimal.map((move, index) => {
+                        const isNext = index === optimalCursor;
+                        return (
+                          <li
+                            key={`${moveToString(move)}-${index}`}
+                            ref={isNext ? optimalChipRef : undefined}
+                          >
+                            <span
+                              className={`tnum inline-flex min-h-6 items-center rounded-[3px] border px-1.5 text-[11px] font-semibold ${
+                                isNext
+                                  ? "border-transparent bg-accent text-accent-ink"
+                                  : "border-line text-ink-soft"
+                              }`}
+                            >
+                              {moveToString(move)}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </>
                 ) : null}

@@ -1,4 +1,5 @@
-import type { CubeState } from "./cube";
+import type { CubeState, Move } from "./cube";
+import { applyMoves } from "./cube";
 
 /** Two cube states are identical when every cubie matches by order and turn. */
 export function sameCube(a: CubeState, b: CubeState): boolean {
@@ -18,4 +19,22 @@ export function sameCube(a: CubeState, b: CubeState): boolean {
     }
   }
   return true;
+}
+
+/**
+ * How far a player has walked through a fixed plan. Returns the number of plan
+ * moves played when the cube still equals the plan's prefix for that count, or
+ * `null` once the cube diverges (a different move, a scramble, or a reset).
+ * Comparing the real cube, not just the move log, lets a plan survive undos
+ * and keeps a guide from replanning after every quarter turn.
+ */
+export function planCursor(
+  start: CubeState,
+  plan: readonly Move[],
+  played: readonly Move[],
+  actual: CubeState,
+): number | null {
+  if (played.length > plan.length) return null;
+  const expected = applyMoves(start, plan.slice(0, played.length));
+  return sameCube(expected, actual) ? played.length : null;
 }

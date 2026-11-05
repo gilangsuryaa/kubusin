@@ -59,7 +59,10 @@ kali kubus berubah, jadi panduan selalu cocok dengan yang tampil di layar.
 
 Saat panduan aktif, orientasi dikunci ke standar dan waktu tidak masuk rekor.
 Tombol **Solusi optimal** menghitung penyelesaian terpendek lewat `rubik-solver`
-(dimuat dinamis, hanya saat diminta).
+(dimuat dinamis, hanya saat diminta). Solusinya dihitung sekali dari susunan
+saat tombol ditekan, lalu tetap sama selama langkahnya kamu ikuti: langkah
+berikutnya disorot dan sisanya berkurang. Solusi baru hanya dihitung kalau kamu
+menekan **Hitung ulang** atau kubus keluar dari jalur yang diprediksi.
 
 ## Pencatat gerakan
 
@@ -97,11 +100,12 @@ Logika kubus terpisah dari tampilan dan diuji langsung di Node.
 
 ## Test
 
-`pnpm test` menjalankan 72 tes: `lib/cube.test.ts` (model kubus: langkah,
+`pnpm test` menjalankan 76 tes: `lib/cube.test.ts` (model kubus: langkah,
 slice, wide, orientasi, acak, deteksi selesai), `store/game.test.ts` (alur
 sesi, antrean, undo, gating rekor, panduan, pencatat gerakan),
-`lib/guide.test.ts` (pembanding keadaan kubus), dan `lib/solver.test.ts`
-(solver metode pemula, batas antar tahap, facelet, dan solusi optimal).
+`lib/guide.test.ts` (pembanding keadaan kubus dan kursor rencana), dan
+`lib/solver.test.ts` (solver metode pemula, batas antar tahap, facelet, dan
+solusi optimal).
 
 ## Lisensi
 

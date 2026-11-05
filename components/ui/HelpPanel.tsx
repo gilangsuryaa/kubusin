@@ -91,7 +91,8 @@ export function HelpPanel({
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
           Panel Panduan menampilkan langkah penyelesaian bertahap dan menyorot
           langkah berikutnya. Saat panduan aktif, orientasi dikunci ke standar
-          dan waktu tidak masuk rekor.
+          dan waktu tidak masuk rekor. Solusi optimal dihitung sekali lalu tetap
+          sama selama langkahnya kamu ikuti.
         </p>
 
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
