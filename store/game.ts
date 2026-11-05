@@ -57,6 +57,14 @@ interface GameStore {
   active: QueuedMove | null;
   /** User moves already started, oldest first. Drives undo and the counter. */
   moves: Move[];
+  /** The shuffle in notation, kept for the move tracker. */
+  scramble: Move[];
+  /**
+   * Every non-scramble turn applied to the cube, in order, including undos.
+   * A raw log for analysis, so it can differ from `moves`, which excludes
+   * turns the player took back.
+   */
+  history: Move[];
   status: GameStatus;
   startedAt: number | null;
   /** Final time in ms once solved. */
@@ -165,6 +173,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   queue: [],
   active: null,
   moves: [],
+  scramble: [],
+  history: [],
   status: "idle",
   startedAt: null,
   finalMs: null,
@@ -223,6 +233,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       queue: moves.map((move) => ({ move, source: "scramble" as const })),
       active: null,
       moves: [],
+      scramble: moves,
+      history: [],
       status: "scrambling",
       startedAt: null,
       finalMs: null,
@@ -262,6 +274,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       queue: [],
       active: null,
       moves: [],
+      scramble: [],
+      history: [],
       status: "idle",
       startedAt: null,
       finalMs: null,
@@ -274,6 +288,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!state.active) return;
 
     const cubies = applyMove(state.cubies, state.active.move);
+    // The shuffle is logged once, up front; only player turns stream in here.
+    const history =
+      state.active.source === "scramble"
+        ? state.history
+        : [...state.history, state.active.move];
 
     // Undoing the only move of a run that began on a solved cube lands on the
     // exact starting state; that is a cancellation, not a win.
@@ -285,6 +304,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     ) {
       set({
         cubies,
+        history,
         active: null,
         status: "idle",
         startedAt: null,
@@ -304,6 +324,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (solvedNow && !state.runScrambled) {
       set({
         cubies,
+        history,
         active: null,
         moves: [],
         status: "idle",
@@ -317,6 +338,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({
       cubies,
+      history,
       active: null,
       status: solvedNow ? "solved" : state.status,
       finalMs,

@@ -95,6 +95,11 @@ export function HelpPanel({
         </p>
 
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
+          Panel Pencatat gerakan mencatat urutan acakan dan setiap langkah yang
+          kamu putar, dalam notasi, untuk dianalisis atau disalin.
+        </p>
+
+        <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
           Hanya rotasi seluruh kubus (x y z) dan pemilihan manual di panel
           Orientasi yang mengubah orientasi. Langkah biasa, slice (M E S), dan
           wide moves (W) tidak mengubahnya.

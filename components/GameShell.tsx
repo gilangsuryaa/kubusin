@@ -8,6 +8,7 @@ import { ColorLegend } from "@/components/ui/ColorLegend";
 import { ControlBar } from "@/components/ui/ControlBar";
 import { HelpPanel } from "@/components/ui/HelpPanel";
 import { LiveRegion } from "@/components/ui/LiveRegion";
+import { MoveTracker } from "@/components/ui/MoveTracker";
 import { OrientationPanel } from "@/components/ui/OrientationPanel";
 import { ResetDialog } from "@/components/ui/ResetDialog";
 import { SolveGuide } from "@/components/ui/SolveGuide";
@@ -134,6 +135,7 @@ export function GameShell() {
           <SolveGuide />
           <OrientationPanel />
           <StatsPanel />
+          <MoveTracker />
           <BestTimes />
           <section className="border-t border-line pt-4">
             <h2 className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-soft">

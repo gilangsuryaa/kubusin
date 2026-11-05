@@ -8,6 +8,8 @@ function resetStore(): void {
     queue: [],
     active: null,
     moves: [],
+    scramble: [],
+    history: [],
     status: "idle",
     startedAt: null,
     finalMs: null,
@@ -208,5 +210,55 @@ describe("wide moves in the store", () => {
     const state = useGameStore.getState();
     expect(state.status).toBe("idle");
     expect(state.bestTimes).toHaveLength(0);
+  });
+});
+
+describe("move tracker", () => {
+  beforeEach(resetStore);
+
+  function play(face: "U" | "D" | "L" | "R" | "F" | "B", turns: 1 | -1): void {
+    useGameStore.getState().requestMove(face, turns);
+    useGameStore.getState().commitActive();
+  }
+
+  it("stores the shuffle in notation", () => {
+    useGameStore.getState().requestScramble();
+    const scramble = useGameStore.getState().scramble;
+    expect(scramble.length).toBeGreaterThanOrEqual(20);
+    expect(scramble.length).toBeLessThanOrEqual(25);
+  });
+
+  it("logs each committed user turn in order", () => {
+    play("R", 1);
+    play("U", -1);
+    expect(useGameStore.getState().history).toEqual([
+      { face: "R", turns: 1 },
+      { face: "U", turns: -1 },
+    ]);
+  });
+
+  it("logs an undo as the inverse turn", () => {
+    play("R", 1);
+    useGameStore.getState().requestUndo();
+    useGameStore.getState().commitActive();
+    expect(useGameStore.getState().history).toEqual([
+      { face: "R", turns: 1 },
+      { face: "R", turns: -1 },
+    ]);
+  });
+
+  it("starts a fresh log on a new scramble", () => {
+    play("R", 1);
+    useGameStore.getState().requestScramble();
+    const state = useGameStore.getState();
+    expect(state.history).toEqual([]);
+    expect(state.scramble.length).toBeGreaterThan(0);
+  });
+
+  it("clears the log on reset", () => {
+    play("R", 1);
+    useGameStore.getState().requestReset();
+    expect(useGameStore.getState().history).toEqual([]);
+    expect(useGameStore.getState().scramble).toEqual([]);
   });
 });
