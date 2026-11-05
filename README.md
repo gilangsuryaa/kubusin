@@ -3,6 +3,8 @@
 Kubus Rubik 3D di browser. Putar tiap sisi lewat keyboard atau sentuhan, acak
 kubus, ukur waktu, dan simpan sepuluh rekor terbaik.
 
+![Kubus Rubik 3D Kubusin](docs/kubusin-hero.png)
+
 Next.js (App Router) + TypeScript strict + Tailwind CSS + three.js
 (`@react-three/fiber`, `@react-three/drei`) + Zustand.
 
@@ -66,6 +68,13 @@ acakan (saat sistem mengacak) dan setiap langkah yang kamu putar, berurutan.
 Undo tercatat sebagai langkah kebalikannya, karena itulah yang benar-benar
 terjadi pada kubus. Tombol **Salin** menyalin keduanya sebagai teks.
 
+## Tangkapan layar
+
+Tema gelap dengan panduan penyelesaian bertahap, orientasi terkunci, statistik
+waktu, dan pencatat gerakan:
+
+![Kubusin tema gelap dengan panduan, statistik, dan pencatat gerakan](docs/kubusin-fitur.png)
+
 ## Struktur
 
 ```
@@ -73,6 +82,7 @@ app/                     layout, halaman, 404, ikon, gambar Open Graph
 components/cube/         rendering 3D (Canvas, cubie, animasi layer)
 components/ui/           tombol, statistik, rekor, orientasi, panduan, pencatat, bantuan, overlay
 components/GameShell.tsx penyusun UI + penghubung store dan keyboard
+docs/                    tangkapan layar untuk README
 hooks/                   useKeyboard, useElapsed, useMediaQuery, useTheme
 lib/cube.ts              model kubus murni (tanpa three.js), 27 cubie
 lib/stages.ts            mesin pencari tahap generik (reduced-state BFS)
