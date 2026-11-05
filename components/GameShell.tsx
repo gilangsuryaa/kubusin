@@ -146,15 +146,15 @@ export function GameShell() {
 
       <footer className="mx-auto w-full max-w-[1180px] px-4 pb-8 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-line pt-4 text-[11px] text-ink-soft">
-          <span>Kubusin · rubik 3D di browser</span>
+          <span>Kubusin</span>
           <a
             href="https://github.com/gilangsuryaa/kubusin"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-[3px] text-ink-soft transition-colors hover:text-ink"
+            aria-label="Kode sumber di GitHub"
+            className="inline-flex items-center rounded-[3px] p-1 text-ink-soft transition-colors hover:text-ink"
           >
             <GitHubMark />
-            Kode sumber di GitHub
           </a>
         </div>
       </footer>
