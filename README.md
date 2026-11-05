@@ -49,15 +49,29 @@ Orientasi yang mengubah orientasi; slice dan wide tidak.
 Rekor hanya dicatat kalau sesi dimulai dengan `Spasi`. Input keyboard diabaikan
 selama ada modal terbuka.
 
+## Panduan
+
+Panel **Panduan** menampilkan langkah penyelesaian bertahap metode pemula untuk
+susunan saat ini dan menyorot langkah berikutnya. Langkah dihitung ulang setiap
+kali kubus berubah, jadi panduan selalu cocok dengan yang tampil di layar.
+
+Saat panduan aktif, orientasi dikunci ke standar dan waktu tidak masuk rekor.
+Tombol **Solusi optimal** menghitung penyelesaian terpendek lewat `rubik-solver`
+(dimuat dinamis, hanya saat diminta).
+
 ## Struktur
 
 ```
 app/                     layout, halaman, 404, ikon, gambar Open Graph
 components/cube/         rendering 3D (Canvas, cubie, animasi layer)
-components/ui/           tombol, statistik, rekor, orientasi, bantuan, overlay
+components/ui/           tombol, statistik, rekor, orientasi, panduan, bantuan, overlay
 components/GameShell.tsx penyusun UI + penghubung store dan keyboard
 hooks/                   useKeyboard, useElapsed, useMediaQuery, useTheme
 lib/cube.ts              model kubus murni (tanpa three.js), 27 cubie
+lib/stages.ts            mesin pencari tahap generik (reduced-state BFS)
+lib/beginner.ts          solver metode pemula, tujuh tahap
+lib/facelets.ts          cubie -> string facelet standar URFDLB
+lib/optimal.ts           solusi optimal via rubik-solver
 store/game.ts            state permainan (langkah, antrean, timer, rekor)
 ```
 
@@ -65,9 +79,10 @@ Logika kubus terpisah dari tampilan dan diuji langsung di Node.
 
 ## Test
 
-`pnpm test` menjalankan 55 tes di `lib/cube.test.ts` (model kubus: langkah,
-slice, wide, orientasi, acak, deteksi selesai) dan `store/game.test.ts` (alur
-sesi, antrean, undo, dan gating rekor).
+`pnpm test` menjalankan 64 tes: `lib/cube.test.ts` (model kubus: langkah,
+slice, wide, orientasi, acak, deteksi selesai), `store/game.test.ts` (alur
+sesi, antrean, undo, gating rekor, panduan), dan `lib/solver.test.ts` (solver
+metode pemula, batas antar tahap, facelet, dan solusi optimal).
 
 ## Lisensi
 

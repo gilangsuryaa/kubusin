@@ -11,6 +11,8 @@ interface WinOverlayProps {
   /** Best time including this run, or null when there is no history yet. */
   bestMs: number | null;
   isNewBest: boolean;
+  /** False when the guide was on, so the time was not stored as a record. */
+  recorded: boolean;
   onPlayAgain: () => void;
   onClose: () => void;
 }
@@ -21,6 +23,7 @@ export function WinOverlay({
   moves,
   bestMs,
   isNewBest,
+  recorded,
   onPlayAgain,
   onClose,
 }: WinOverlayProps) {
@@ -59,11 +62,13 @@ export function WinOverlay({
         </dl>
 
         <p className="mt-3 text-xs text-ink-soft">
-          {isNewBest
-            ? "Waktu ini tersimpan sebagai rekor terbaikmu."
-            : bestMs !== null
-              ? `Rekor terbaikmu ${formatTime(bestMs)}.`
-              : "Waktu ini masuk ke daftar rekormu."}
+          {!recorded
+            ? "Mode panduan aktif, jadi waktu ini tidak masuk rekor."
+            : isNewBest
+              ? "Waktu ini tersimpan sebagai rekor terbaikmu."
+              : bestMs !== null
+                ? `Rekor terbaikmu ${formatTime(bestMs)}.`
+                : "Waktu ini masuk ke daftar rekormu."}
         </p>
 
         <div className="mt-6 flex gap-2">

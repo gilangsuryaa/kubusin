@@ -23,6 +23,9 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      rubik-solver:
+        specifier: ^0.1.2
+        version: 0.1.2
       three:
         specifier: ^0.182.0
         version: 0.182.0
@@ -2076,6 +2079,9 @@ packages:
     resolution: {integrity: sha512-bWvlMpFKiTfDKfnK7FC2MPgPeWCf/Kpwsq49ApdW+FQaBZb6O6dZ4MAPbPUjp7hYQrw/RobqCzn64BRrQecGHw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
+
+  rubik-solver@0.1.2:
+    resolution: {integrity: sha512-vZj2kS2hfvsZGo+ludiTrC0YnxxfzcZKepqOkNNuvFDJ2L7eEmEBVoTu59A+T/IE2cmsAOd3N9FcRkWeUvx+lw==}
 
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
@@ -4563,6 +4569,8 @@ snapshots:
       '@rolldown/binding-openharmony-arm64': 1.2.16
       '@rolldown/binding-win32-arm64-msvc': 1.2.16
       '@rolldown/binding-win32-x64-msvc': 1.2.16
+
+  rubik-solver@0.1.2: {}
 
   run-parallel@1.2.0:
     dependencies:

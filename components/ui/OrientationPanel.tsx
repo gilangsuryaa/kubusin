@@ -72,7 +72,8 @@ function Swatches({
 export function OrientationPanel() {
   const orientation = useGameStore((state) => state.orientation);
   const setOrientation = useGameStore((state) => state.setOrientation);
-  const locked = useGameStore((state) => state.status === "scrambling");
+  const assist = useGameStore((state) => state.assist);
+  const locked = useGameStore((state) => state.status === "scrambling" || assist);
 
   // A front and an up face must be perpendicular, so each row hides the face
   // exactly opposite the other selection.
@@ -104,8 +105,9 @@ export function OrientationPanel() {
         </Button>
       </div>
       <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
-        Pilih warna yang menghadap depan dan atas. Huruf F, U, dan lainnya
-        mengikuti pilihan ini.
+        {assist
+          ? "Orientasi dikunci ke standar selama panduan aktif."
+          : "Pilih warna yang menghadap depan dan atas. Huruf F, U, dan lainnya mengikuti pilihan ini."}
       </p>
       <div className="mt-3 space-y-2">
         <div

@@ -16,6 +16,7 @@ function resetStore(): void {
     scrambleId: 0,
     orientation: DEFAULT_ORIENTATION,
     runScrambled: false,
+    assist: false,
   });
 }
 
@@ -109,6 +110,42 @@ describe("solve records", () => {
     useGameStore.setState({ runScrambled: true });
     useGameStore.getState().requestReset();
     expect(useGameStore.getState().runScrambled).toBe(false);
+  });
+});
+
+describe("solver guide (assist)", () => {
+  beforeEach(resetStore);
+
+  function turnRFourTimes(): void {
+    for (let i = 0; i < 4; i += 1) {
+      useGameStore.getState().requestMove("R", 1);
+      useGameStore.getState().commitActive();
+    }
+  }
+
+  it("snaps the hold to standard when enabled", () => {
+    useGameStore.getState().setOrientation("L", "D");
+    useGameStore.getState().setAssist(true);
+    expect(useGameStore.getState().orientation).toEqual(DEFAULT_ORIENTATION);
+  });
+
+  it("pins the hold while on", () => {
+    useGameStore.getState().setAssist(true);
+    useGameStore.getState().setOrientation("L", "D");
+    useGameStore.getState().rotateCube("x", 1);
+    expect(useGameStore.getState().orientation).toEqual(DEFAULT_ORIENTATION);
+    useGameStore.getState().setAssist(false);
+    useGameStore.getState().rotateCube("x", 1);
+    expect(useGameStore.getState().orientation).not.toEqual(DEFAULT_ORIENTATION);
+  });
+
+  it("solves a scrambled run without recording a best time", () => {
+    useGameStore.setState({ runScrambled: true, assist: true });
+    turnRFourTimes();
+    const state = useGameStore.getState();
+    expect(state.status).toBe("solved");
+    expect(state.finalMs).not.toBeNull();
+    expect(state.bestTimes).toHaveLength(0);
   });
 });
 

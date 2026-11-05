@@ -10,6 +10,7 @@ import { HelpPanel } from "@/components/ui/HelpPanel";
 import { LiveRegion } from "@/components/ui/LiveRegion";
 import { OrientationPanel } from "@/components/ui/OrientationPanel";
 import { ResetDialog } from "@/components/ui/ResetDialog";
+import { SolveGuide } from "@/components/ui/SolveGuide";
 import { StatsPanel } from "@/components/ui/StatsPanel";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { WinOverlay } from "@/components/ui/WinOverlay";
@@ -32,6 +33,7 @@ export function GameShell() {
   const finalMs = useGameStore((state) => state.finalMs);
   const moveCount = useGameStore((state) => state.moves.length);
   const bestTimes = useGameStore((state) => state.bestTimes);
+  const assist = useGameStore((state) => state.assist);
   const hydrate = useGameStore((state) => state.hydrate);
   const requestMove = useGameStore((state) => state.requestMove);
   const rotateCube = useGameStore((state) => state.rotateCube);
@@ -77,7 +79,7 @@ export function GameShell() {
   }, [helpOpen, winOpen, resetOpen, startedAt]);
 
   const bestMs = bestTimes.length > 0 ? bestTimes[0].ms : null;
-  const isNewBest = finalMs !== null && bestMs !== null && finalMs <= bestMs;
+  const isNewBest = !assist && finalMs !== null && bestMs !== null && finalMs <= bestMs;
 
   return (
     <>
@@ -129,6 +131,7 @@ export function GameShell() {
         </section>
 
         <aside className="flex min-w-0 flex-col gap-5">
+          <SolveGuide />
           <OrientationPanel />
           <StatsPanel />
           <BestTimes />
@@ -156,6 +159,7 @@ export function GameShell() {
         moves={moveCount}
         bestMs={bestMs}
         isNewBest={isNewBest}
+        recorded={!assist}
         onPlayAgain={() => {
           setDismissedSolve(startedAt);
           requestScramble();

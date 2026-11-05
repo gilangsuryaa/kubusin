@@ -72,12 +72,19 @@ interface GameStore {
    * produces a record, so spinning one face back to solved cannot fake a win.
    */
   runScrambled: boolean;
+  /**
+   * Solver guide. When on, the hold is pinned to the standard orientation and
+   * solves do not count as records.
+   */
+  assist: boolean;
 
   requestMove: (name: MoveName, turns: Turns, wide?: boolean) => void;
   /** Change the hold; `front` and `up` must be perpendicular physical faces. */
   setOrientation: (front: Face, up: Face) => void;
   /** Rotate the whole cube like a physical x/y/z turn; not a counted move. */
   rotateCube: (axis: Axis, turns: Turns) => void;
+  /** Turn the solver guide on or off; enabling pins the standard hold. */
+  setAssist: (enabled: boolean) => void;
   requestScramble: () => void;
   requestUndo: () => void;
   requestReset: () => void;
@@ -166,6 +173,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   scrambleId: 0,
   orientation: DEFAULT_ORIENTATION,
   runScrambled: false,
+  assist: false,
 
   requestMove(name, turns, wide = false) {
     const { status, active, orientation } = get();
@@ -187,6 +195,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   setOrientation(front, up) {
+    // The guide needs the screen letters to match the physical hold.
+    if (get().assist) return;
     // Reject opposite faces; the UI only offers perpendicular choices.
     if (!areAdjacentFaces(front, up)) return;
     set({ orientation: { front, up } });
@@ -196,7 +206,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     // The shuffle owns the cube while it plays; do not fight it.
     if (state.status === "scrambling") return;
+    // The guide pins the hold, so whole-cube rotations are ignored.
+    if (state.assist) return;
     set({ orientation: rotateOrientation(state.orientation, axis, turns) });
+  },
+
+  setAssist(enabled) {
+    // Enabling the guide snaps the hold so the shown letters are unambiguous.
+    set({ assist: enabled, ...(enabled ? { orientation: DEFAULT_ORIENTATION } : {}) });
   },
 
   requestScramble() {
@@ -306,7 +323,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ...(solvedNow ? { queue: [] } : {}),
     });
 
-    if (solvedNow && finalMs !== null) {
+    if (solvedNow && finalMs !== null && !state.assist) {
       const now = Date.now();
       const entry: BestTime = {
         id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
