@@ -90,9 +90,11 @@ export function HelpPanel({
 
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
           Panel Panduan menampilkan langkah penyelesaian bertahap dan menyorot
-          langkah berikutnya. Saat panduan aktif, orientasi dikunci ke standar
-          dan waktu tidak masuk rekor. Solusi optimal dihitung sekali lalu tetap
-          sama selama langkahnya kamu ikuti.
+          langkah berikutnya. Saat dinyalakan, pilih metodenya: Metode Pemula
+          (lapis demi lapis), CFOP (cross, F2L, OLL, PLL), atau Optimal (solusi
+          terpendek). Saat panduan aktif, orientasi dikunci ke standar dan waktu
+          tidak masuk rekor. Rencana tetap sama selama langkahnya kamu ikuti dan
+          hanya dihitung ulang bila kubus keluar jalur.
         </p>
 
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">

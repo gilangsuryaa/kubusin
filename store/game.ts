@@ -23,6 +23,8 @@ import {
 export type GameStatus = "idle" | "scrambling" | "ready" | "running" | "solved";
 /** Where a queued turn came from; only `user` turns start the timer and count. */
 export type MoveSource = "user" | "scramble" | "undo";
+/** Solver the guide walks the player through. */
+export type GuideMethod = "beginner" | "cfop" | "optimal";
 
 export interface QueuedMove {
   readonly move: Move;
@@ -40,6 +42,8 @@ export const BEST_TIMES_KEY = "kubusin.best-times.v1";
 export const BEST_TIMES_LIMIT = 10;
 /** Storage key for the sound-effects preference. */
 export const SOUND_KEY = "kubusin.sound.v1";
+/** Storage key for the guide's chosen method. */
+export const GUIDE_METHOD_KEY = "kubusin.guide-method.v1";
 /** Layer turn length in milliseconds. */
 export const MOVE_DURATION_MS = 170;
 /** Scramble turns run faster so the shuffle does not feel like a cutscene. */
@@ -87,6 +91,8 @@ interface GameStore {
    * solves do not count as records.
    */
   assist: boolean;
+  /** Which method the guide shows while `assist` is on. */
+  guideMethod: GuideMethod;
   /** Sound effects for turns and the win chime. On unless the player opted out. */
   soundOn: boolean;
 
@@ -97,6 +103,8 @@ interface GameStore {
   rotateCube: (axis: Axis, turns: Turns) => void;
   /** Turn the solver guide on or off; enabling pins the standard hold. */
   setAssist: (enabled: boolean) => void;
+  /** Pick the guide's method and remember it. */
+  setGuideMethod: (method: GuideMethod) => void;
   /** Flip the sound-effects preference and remember it. */
   toggleSound: () => void;
   requestScramble: () => void;
@@ -193,6 +201,29 @@ function writeSound(on: boolean): void {
   }
 }
 
+const GUIDE_METHODS: readonly GuideMethod[] = ["beginner", "cfop", "optimal"];
+
+function readGuideMethod(): GuideMethod {
+  if (typeof window === "undefined") return "beginner";
+  try {
+    const raw = window.localStorage.getItem(GUIDE_METHOD_KEY);
+    return GUIDE_METHODS.includes(raw as GuideMethod)
+      ? (raw as GuideMethod)
+      : "beginner";
+  } catch {
+    return "beginner";
+  }
+}
+
+function writeGuideMethod(method: GuideMethod): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GUIDE_METHOD_KEY, method);
+  } catch {
+    // Non-fatal: the choice still applies for this session.
+  }
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   cubies: createSolvedCube(),
   queue: [],
@@ -209,6 +240,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   orientation: DEFAULT_ORIENTATION,
   runScrambled: false,
   assist: false,
+  guideMethod: "beginner",
   soundOn: true,
 
   requestMove(name, turns, wide = false) {
@@ -250,6 +282,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setAssist(enabled) {
     // Enabling the guide snaps the hold so the shown letters are unambiguous.
     set({ assist: enabled, ...(enabled ? { orientation: DEFAULT_ORIENTATION } : {}) });
+  },
+
+  setGuideMethod(method) {
+    writeGuideMethod(method);
+    set({ guideMethod: method });
   },
 
   toggleSound() {
@@ -404,6 +441,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   hydrate() {
-    set({ bestTimes: readBestTimes(), soundOn: readSound(), hydrated: true });
+    set({
+      bestTimes: readBestTimes(),
+      soundOn: readSound(),
+      guideMethod: readGuideMethod(),
+      hydrated: true,
+    });
   },
 }));

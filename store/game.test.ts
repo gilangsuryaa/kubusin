@@ -19,6 +19,7 @@ function resetStore(): void {
     orientation: DEFAULT_ORIENTATION,
     runScrambled: false,
     assist: false,
+    guideMethod: "beginner",
     soundOn: true,
   });
 }
@@ -149,6 +150,14 @@ describe("solver guide (assist)", () => {
     expect(state.status).toBe("solved");
     expect(state.finalMs).not.toBeNull();
     expect(state.bestTimes).toHaveLength(0);
+  });
+
+  it("defaults to the beginner method and switches on demand", () => {
+    expect(useGameStore.getState().guideMethod).toBe("beginner");
+    useGameStore.getState().setGuideMethod("cfop");
+    expect(useGameStore.getState().guideMethod).toBe("cfop");
+    useGameStore.getState().setGuideMethod("optimal");
+    expect(useGameStore.getState().guideMethod).toBe("optimal");
   });
 });
 

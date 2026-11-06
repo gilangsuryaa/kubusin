@@ -147,16 +147,24 @@ export interface StageSolver {
   (state: CubeState): Move[];
 }
 
+/** One tracked piece: which kind it is and where it belongs on a solved cube. */
+export interface PieceSpec {
+  readonly kind: PieceKind;
+  readonly home: Vec3;
+}
+
 export interface StageConfig {
   readonly name: string;
-  readonly kind: PieceKind;
-  /** Homes of the pieces this stage solves, in a fixed order. */
-  readonly pieceHomes: readonly Vec3[];
+  /**
+   * Pieces this stage solves, in a fixed order. They may mix kinds, so a stage
+   * can solve a corner and an edge together as one F2L pair.
+   */
+  readonly pieces: readonly PieceSpec[];
   /**
    * Acceptable reduced entries (`slot * faceCount + face`) for each piece, in
-   * the same order as `pieceHomes`. A single option pins the piece; several
-   * options describe a goal that only constrains one aspect, such as "yellow
-   * facing up in any top slot" for the last-layer orientation stage.
+   * the same order as `pieces`. A single option pins the piece; several options
+   * describe a goal that only constrains one aspect, such as "yellow facing up
+   * in any top slot" for the last-layer orientation stage.
    */
   readonly goalOptions: readonly (readonly number[])[];
   /** Move sequences that keep this stage's earlier stages solved. */
@@ -166,7 +174,13 @@ export interface StageConfig {
 interface StageRuntime {
   readonly config: StageConfig;
   readonly generators: readonly Move[][];
-  readonly tables: Uint8Array[];
+  /** `tables[generator][piece]` transitions, one table per tracked piece. */
+  readonly tables: Uint8Array[][];
+  /** Entry count per piece (slot * faceCount), used as mixed-radix bases. */
+  readonly bases: number[];
+  /** Mixed-radix stride per piece, so an entry tuple encodes to one index. */
+  readonly strides: number[];
+  readonly total: number;
   distance?: Uint8Array;
 }
 
@@ -203,10 +217,25 @@ function runtime(config: StageConfig): StageRuntime {
   const cached = runtimeCache.get(config);
   if (cached) return cached;
   const generators = closedGenerators(config.generators);
+  const bases = config.pieces.map(
+    (piece) => piece.kind.slots.length * piece.kind.faceCount,
+  );
+  // Least-significant piece first, so index = sum(entry[i] * strides[i]).
+  const strides: number[] = [];
+  let total = 1;
+  for (const base of bases) {
+    strides.push(total);
+    total *= base;
+  }
   const value: StageRuntime = {
     config,
     generators,
-    tables: generators.map((moves) => generatorTable(config.kind, moves)),
+    tables: generators.map((moves) =>
+      config.pieces.map((piece) => generatorTable(piece.kind, moves)),
+    ),
+    bases,
+    strides,
+    total,
   };
   runtimeCache.set(config, value);
   return value;
@@ -214,46 +243,42 @@ function runtime(config: StageConfig): StageRuntime {
 
 const UNVISITED = 255;
 
-function encode(entries: readonly number[], base: number): number {
+function encode(entries: readonly number[], strides: readonly number[]): number {
   let index = 0;
-  for (let i = entries.length - 1; i >= 0; i -= 1) index = index * base + entries[i];
+  for (let i = 0; i < entries.length; i += 1) index += entries[i] * strides[i];
   return index;
 }
 
-function decode(index: number, count: number, base: number): number[] {
-  const entries = new Array<number>(count);
-  let value = index;
-  for (let i = 0; i < count; i += 1) {
-    entries[i] = value % base;
-    value = Math.floor(value / base);
+function decode(index: number, bases: readonly number[], strides: readonly number[]): number[] {
+  const entries = new Array<number>(bases.length);
+  for (let i = 0; i < bases.length; i += 1) {
+    entries[i] = Math.floor(index / strides[i]) % bases[i];
   }
   return entries;
 }
 
 /** Every reduced index that satisfies a config: one combination per option. */
-function goalIndices(config: StageConfig, base: number): number[] {
+function goalIndices(run: StageRuntime): number[] {
   let entries: number[][] = [[]];
-  for (const options of config.goalOptions) {
+  for (const options of run.config.goalOptions) {
     entries = entries.flatMap((prefix) =>
       options.map((option) => [...prefix, option]),
     );
   }
-  return entries.map((list) => encode(list, base));
+  return entries.map((list) => encode(list, run.strides));
 }
 
 /** Exact generator count from every reduced state to the stage goal. */
 function stageDistance(run: StageRuntime): Uint8Array {
   if (run.distance) return run.distance;
-  const { kind } = run.config;
-  const count = run.config.pieceHomes.length;
-  const base = kind.slots.length * kind.faceCount;
-  const total = base ** count;
+  const count = run.config.pieces.length;
+  const total = run.total;
   const distance = new Uint8Array(total).fill(UNVISITED);
   const queue = new Int32Array(total);
   let head = 0;
   let tail = 0;
 
-  for (const start of goalIndices(run.config, base)) {
+  for (const start of goalIndices(run)) {
     if (distance[start] !== UNVISITED) continue;
     distance[start] = 0;
     queue[tail] = start;
@@ -265,11 +290,11 @@ function stageDistance(run: StageRuntime): Uint8Array {
     head += 1;
     const base_ = distance[index];
     if (base_ >= UNVISITED - 1) continue;
-    const entries = decode(index, count, base);
-    for (const table of run.tables) {
+    const entries = decode(index, run.bases, run.strides);
+    for (const tables of run.tables) {
       const next = new Array<number>(count);
-      for (let i = 0; i < count; i += 1) next[i] = table[entries[i]];
-      const nextIndex = encode(next, base);
+      for (let i = 0; i < count; i += 1) next[i] = tables[i][entries[i]];
+      const nextIndex = encode(next, run.strides);
       if (distance[nextIndex] === UNVISITED) {
         distance[nextIndex] = base_ + 1;
         queue[tail] = nextIndex;
@@ -291,23 +316,22 @@ function findCubie(state: CubeState, home: Vec3): Cubie {
 /** Build a solver that walks the distance table one generator at a time. */
 export function makeStageSolver(config: StageConfig): StageSolver {
   const run = runtime(config);
-  const { kind, pieceHomes } = config;
-  const base = kind.slots.length * kind.faceCount;
+  const { pieces } = config;
 
   return (state: CubeState): Move[] => {
     const distance = stageDistance(run);
-    let entries = pieceHomes.map((home) =>
-      pieceState(kind, findCubie(state, home)),
+    let entries = pieces.map((piece) =>
+      pieceState(piece.kind, findCubie(state, piece.home)),
     );
-    let index = encode(entries, base);
+    let index = encode(entries, run.strides);
     const moves: Move[] = [];
 
     while (distance[index] > 0) {
       let advanced = false;
       for (let generator = 0; generator < run.tables.length; generator += 1) {
-        const table = run.tables[generator];
-        const next = entries.map((entry) => table[entry]);
-        const nextIndex = encode(next, base);
+        const tables = run.tables[generator];
+        const next = entries.map((entry, i) => tables[i][entry]);
+        const nextIndex = encode(next, run.strides);
         if (distance[nextIndex] === distance[index] - 1) {
           moves.push(...run.generators[generator]);
           entries = next;

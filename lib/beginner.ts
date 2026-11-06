@@ -50,7 +50,7 @@ function edgeHomes(normal: Vec3): Vec3[] {
 
 /** Pieces with a D-face sticker (yellow). These form the first layer. */
 const D_CORNERS = cornerHomes(D_NORMAL);
-const D_EDGES = edgeHomes(D_NORMAL);
+export const D_EDGES = edgeHomes(D_NORMAL);
 /** Pieces with a U-face sticker (white). These form the last layer. */
 const U_CORNERS = cornerHomes(U_NORMAL);
 const U_EDGES = edgeHomes(U_NORMAL);
@@ -89,7 +89,12 @@ function config(
   goalOptions: number[][],
   generators: readonly Move[][],
 ): StageConfig {
-  return { name, kind, pieceHomes: homes, goalOptions, generators };
+  return {
+    name,
+    pieces: homes.map((home) => ({ kind, home })),
+    goalOptions,
+    generators,
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -217,10 +222,10 @@ const pllEdgesStage = config(
 const CROSS = makeStageSolver(crossStage);
 const CORNER = makeStageSolver(cornerStage);
 const MIDDLE = makeStageSolver(middleStage);
-const WHITE_CROSS = makeStageSolver(whiteCrossStage);
-const OLL_CORNERS = makeStageSolver(ollCornersStage);
-const PLL_CORNERS = makeStageSolver(pllCornersStage);
-const PLL_EDGES = makeStageSolver(pllEdgesStage);
+export const WHITE_CROSS = makeStageSolver(whiteCrossStage);
+export const OLL_CORNERS = makeStageSolver(ollCornersStage);
+export const PLL_CORNERS = makeStageSolver(pllCornersStage);
+export const PLL_EDGES = makeStageSolver(pllEdgesStage);
 
 /** Moves that complete the first-layer cross, shortest for its four edges. */
 export function solveCross(state: CubeState): Move[] {
@@ -292,7 +297,7 @@ const STAGES: readonly StageDefinition[] = [
 ];
 
 /** Drop adjacent opposite turns of the same face; they cancel out. */
-function cancelRedundant(moves: readonly Move[]): Move[] {
+export function cancelRedundant(moves: readonly Move[]): Move[] {
   const out: Move[] = [];
   for (const move of moves) {
     const top = out[out.length - 1];

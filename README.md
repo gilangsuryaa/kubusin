@@ -54,16 +54,26 @@ selama ada modal terbuka.
 
 ## Panduan
 
-Panel **Panduan** menampilkan langkah penyelesaian bertahap metode pemula untuk
-susunan saat ini dan menyorot langkah berikutnya. Langkah dihitung ulang setiap
-kali kubus berubah, jadi panduan selalu cocok dengan yang tampil di layar.
+Panel **Panduan** menampilkan langkah penyelesaian bertahap untuk susunan saat
+ini dan menyorot langkah berikutnya. Saat panduan dinyalakan, kamu memilih satu
+dari tiga metode:
+
+- **Metode Pemula** — lapis demi lapis: cross bawah, sudut bawah, lapis tengah,
+  lalu cross atas, orientasi sudut, susun sudut, dan susun tepi.
+- **CFOP** — Cross, F2L (empat pasangan sudut-tepi sekaligus), lalu OLL dan PLL.
+  F2L memakai pencarian reduced-state dengan kosakata langkah yang dibuat otomatis
+  dari sekuens pendek yang tidak merusak cross atau pasangan yang sudah selesai.
+- **Optimal** — penyelesaian terpendek dari `rubik-solver`, dimuat dinamis hanya
+  saat metode ini dipilih.
+
+Panduan dihitung ulang setiap kali kubus berubah, jadi selalu cocok dengan yang
+tampil di layar. Rencana tahap maupun solusi optimal disimpan dengan kursor:
+langkah berikutnya disorot dan sisanya berkurang selama kamu mengikutinya, dan
+baru dihitung ulang kalau kubus keluar dari jalur yang diprediksi (atau kamu
+menekan **Hitung ulang** pada metode optimal).
 
 Saat panduan aktif, orientasi dikunci ke standar dan waktu tidak masuk rekor.
-Tombol **Solusi optimal** menghitung penyelesaian terpendek lewat `rubik-solver`
-(dimuat dinamis, hanya saat diminta). Solusinya dihitung sekali dari susunan
-saat tombol ditekan, lalu tetap sama selama langkahnya kamu ikuti: langkah
-berikutnya disorot dan sisanya berkurang. Solusi baru hanya dihitung kalau kamu
-menekan **Hitung ulang** atau kubus keluar dari jalur yang diprediksi.
+Pilihan metode disimpan di perangkat.
 
 ## Pencatat gerakan
 
@@ -98,6 +108,7 @@ hooks/                   useKeyboard, useElapsed, useMediaQuery, useTheme, useCu
 lib/cube.ts              model kubus murni (tanpa three.js), 27 cubie
 lib/stages.ts            mesin pencari tahap generik (reduced-state BFS)
 lib/beginner.ts          solver metode pemula, tujuh tahap
+lib/cfop.ts              solver CFOP (cross, F2L, OLL, PLL)
 lib/facelets.ts          cubie -> string facelet standar URFDLB
 lib/optimal.ts           solusi optimal via rubik-solver
 lib/guide.ts             pembanding keadaan kubus untuk kursor panduan
@@ -109,12 +120,12 @@ Logika kubus terpisah dari tampilan dan diuji langsung di Node.
 
 ## Test
 
-`pnpm test` menjalankan 80 tes: `lib/cube.test.ts` (model kubus: langkah,
+`pnpm test` menjalankan 83 tes: `lib/cube.test.ts` (model kubus: langkah,
 slice, wide, orientasi, acak, deteksi selesai), `store/game.test.ts` (alur
-sesi, antrean, undo, gating rekor, panduan, pencatat gerakan, preferensi suara),
-`lib/guide.test.ts` (pembanding keadaan kubus dan kursor rencana),
+sesi, antrean, undo, gating rekor, panduan, metode, pencatat gerakan, preferensi
+suara), `lib/guide.test.ts` (pembanding keadaan kubus dan kursor rencana),
 `lib/sound.test.ts` (efek suara aman tanpa Web Audio), dan `lib/solver.test.ts`
-(solver metode pemula, batas antar tahap, facelet, dan solusi optimal).
+(solver metode pemula dan CFOP, batas antar tahap, facelet, dan solusi optimal).
 
 ## Lisensi
 

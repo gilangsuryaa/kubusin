@@ -1,16 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { solveBeginner, type SolveStage } from "@/lib/beginner";
+import { solveCfop } from "@/lib/cfop";
 import { isSolved, moveToString, type CubeState, type Move } from "@/lib/cube";
 import { planCursor } from "@/lib/guide";
 import { solveOptimal } from "@/lib/optimal";
-import { useGameStore } from "@/store/game";
+import { useGameStore, type GuideMethod } from "@/store/game";
 import { Button } from "./Button";
 
+const METHOD_OPTIONS: readonly { id: GuideMethod; label: string; title: string }[] = [
+  {
+    id: "beginner",
+    label: "Metode Pemula",
+    title: "Selesaikan lapis demi lapis, dari cross bawah sampai lapis atas.",
+  },
+  {
+    id: "cfop",
+    label: "CFOP",
+    title: "Cross, F2L, lalu OLL dan PLL — metode cepat yang populer.",
+  },
+  {
+    id: "optimal",
+    label: "Optimal",
+    title: "Solusi terpendek dari keadaan kubus saat ini.",
+  },
+];
+
 /**
- * Solver guide. When on, it lists the beginner-method steps for the current
- * cube and highlights the move to play next.
+ * Solver guide. When on, it lists steps for the chosen method — beginner,
+ * CFOP, or the optimal solve — and highlights the move to play next.
  *
  * The plan is kept stable and a cursor walks through it: it only reruns the
  * search once the cube no longer matches what the plan, played so far,
@@ -28,6 +47,8 @@ import { Button } from "./Button";
 export function SolveGuide() {
   const assist = useGameStore((state) => state.assist);
   const setAssist = useGameStore((state) => state.setAssist);
+  const guideMethod = useGameStore((state) => state.guideMethod);
+  const setGuideMethod = useGameStore((state) => state.setGuideMethod);
   const cubies = useGameStore((state) => state.cubies);
   const status = useGameStore((state) => state.status);
   const active = useGameStore((state) => state.active);
@@ -42,10 +63,11 @@ export function SolveGuide() {
   const [optimalLoading, setOptimalLoading] = useState(false);
   const [optimalError, setOptimalError] = useState<string | null>(null);
 
-  /** The exact plan the cursor refers to, with its starting cube and move count. */
+  /** The exact plan the cursor refers to, with its starting cube and method. */
   const planRef = useRef<{
     stages: readonly SolveStage[];
     start: CubeState;
+    method: GuideMethod;
   } | null>(null);
   const movesAtStart = useRef(0);
 
@@ -57,6 +79,30 @@ export function SolveGuide() {
    */
   const optimalRef = useRef<{ moves: readonly Move[]; start: CubeState } | null>(null);
   const optimalMovesAt = useRef(0);
+  /** Guards against a slow solve landing after the cube already changed. */
+  const optimalToken = useRef(0);
+
+  const loadOptimal = useCallback(async () => {
+    const token = optimalToken.current + 1;
+    optimalToken.current = token;
+    setOptimalLoading(true);
+    setOptimalError(null);
+    const start = cubies;
+    const startMoves = moves.length;
+    try {
+      const result = await solveOptimal(start);
+      if (token !== optimalToken.current) return;
+      optimalRef.current = { moves: result, start };
+      optimalMovesAt.current = startMoves;
+      setOptimal(result);
+      setOptimalCursor(0);
+    } catch {
+      if (token !== optimalToken.current) return;
+      setOptimalError("Solusi optimal gagal dihitung.");
+    } finally {
+      if (token === optimalToken.current) setOptimalLoading(false);
+    }
+  }, [cubies, moves.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,11 +113,13 @@ export function SolveGuide() {
       if (!assist) {
         planRef.current = null;
         optimalRef.current = null;
+        optimalToken.current += 1;
         setStages(null);
         setError(null);
         setOptimal(null);
         setOptimalCursor(0);
         setOptimalError(null);
+        setOptimalLoading(false);
         return;
       }
       // The shuffle rewrites the state many times; wait until it settles.
@@ -80,28 +128,49 @@ export function SolveGuide() {
       // updates when it finishes, so comparing them here would misfire.
       if (active) return;
 
-      // Keep a shown optimal solution in step with the cube. It survives
-      // playing its own steps, but is dropped once the cube leaves the path it
-      // predicted (a different move, a scramble, or a reset).
-      const optimalPlan = optimalRef.current;
-      if (optimalPlan) {
-        const cursorNow = planCursor(
-          optimalPlan.start,
-          optimalPlan.moves,
-          moves.slice(optimalMovesAt.current),
-          cubies,
-        );
-        if (cursorNow !== null) {
-          setOptimalCursor(cursorNow);
-        } else {
+      if (guideMethod === "optimal") {
+        // The optimal method has no staged plan.
+        if (planRef.current) {
+          planRef.current = null;
+          setStages(null);
+          setError(null);
+        }
+        // Keep a shown optimal solution in step with the cube. It survives
+        // playing its own steps, but is dropped once the cube leaves the path
+        // it predicted (a different move, a scramble, or a reset).
+        const optimalPlan = optimalRef.current;
+        if (optimalPlan) {
+          const cursorNow = planCursor(
+            optimalPlan.start,
+            optimalPlan.moves,
+            moves.slice(optimalMovesAt.current),
+            cubies,
+          );
+          if (cursorNow !== null) {
+            setOptimalCursor(cursorNow);
+            return;
+          }
           optimalRef.current = null;
           setOptimal(null);
           setOptimalCursor(0);
         }
+        if (isSolved(cubies)) return;
+        void loadOptimal();
+        return;
+      }
+
+      // Staged methods: drop any optimal sequence left over from the other tab.
+      if (optimalRef.current) {
+        optimalRef.current = null;
+        optimalToken.current += 1;
+        setOptimal(null);
+        setOptimalCursor(0);
+        setOptimalError(null);
+        setOptimalLoading(false);
       }
 
       const plan = planRef.current;
-      if (plan) {
+      if (plan && plan.method === guideMethod) {
         const flat = plan.stages.flatMap((stage) => stage.moves);
         const cursorNow = planCursor(
           plan.start,
@@ -118,8 +187,9 @@ export function SolveGuide() {
       setComputing(true);
       setError(null);
       try {
-        const next = solveBeginner(cubies);
-        planRef.current = { stages: next, start: cubies };
+        const next =
+          guideMethod === "cfop" ? solveCfop(cubies) : solveBeginner(cubies);
+        planRef.current = { stages: next, start: cubies, method: guideMethod };
         movesAtStart.current = moves.length;
         setStages(next);
         setCursor(0);
@@ -135,7 +205,7 @@ export function SolveGuide() {
       cancelled = true;
       window.clearTimeout(id);
     };
-  }, [assist, cubies, status, active, moves]);
+  }, [assist, guideMethod, cubies, status, active, moves, loadOptimal]);
 
   const flat = useMemo(() => stages?.flatMap((stage) => stage.moves) ?? [], [stages]);
   const offsets = useMemo(() => {
@@ -167,24 +237,6 @@ export function SolveGuide() {
     optimalChipRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [optimalCursor]);
 
-  async function loadOptimal() {
-    setOptimalLoading(true);
-    setOptimalError(null);
-    const start = cubies;
-    const startMoves = moves.length;
-    try {
-      const result = await solveOptimal(start);
-      optimalRef.current = { moves: result, start };
-      optimalMovesAt.current = startMoves;
-      setOptimal(result);
-      setOptimalCursor(0);
-    } catch {
-      setOptimalError("Solusi optimal gagal dihitung.");
-    } finally {
-      setOptimalLoading(false);
-    }
-  }
-
   return (
     <section
       aria-labelledby="guide-title"
@@ -210,112 +262,66 @@ export function SolveGuide() {
       <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
         {assist
           ? "Ikuti langkah yang disorot. Orientasi dikunci ke standar dan waktu tidak masuk rekor."
-          : "Nyalakan untuk melihat langkah penyelesaian lengkap."}
+          : "Nyalakan untuk memilih metode dan melihat langkah penyelesaian lengkap."}
       </p>
 
       {!assist ? null : (
-        <div className="mt-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
-          {computing ? (
-            <p className="text-xs text-ink-soft" role="status">
-              Menghitung langkah...
-            </p>
-          ) : error ? (
-            <p className="text-xs text-ink-soft" role="alert">
-              {error}
-            </p>
-          ) : solved ? (
-            <p className="text-xs text-ink-soft" role="status">
-              Kubus sudah selesai.
-            </p>
-          ) : stages ? (
-            <div className="space-y-3">
-              <p className="text-xs text-ink-soft" role="status" aria-live="polite">
-                Langkah berikutnya:{" "}
-                <span className="font-semibold text-ink">
-                  {nextMove ? moveToString(nextMove) : "-"}
-                </span>{" "}
-                · {pending} langkah lagi
-              </p>
+        <>
+          <div
+            role="radiogroup"
+            aria-label="Metode penyelesaian"
+            className="mt-3 grid grid-cols-3 gap-1"
+          >
+            {METHOD_OPTIONS.map((option) => (
+              <Button
+                key={option.id}
+                variant={guideMethod === option.id ? "primary" : "outline"}
+                size="sm"
+                role="radio"
+                aria-checked={guideMethod === option.id}
+                title={option.title}
+                className="truncate px-1.5"
+                onClick={() => setGuideMethod(option.id)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
 
-              <ol className="space-y-2.5">
-                {stages.map((stage, stageIndex) => {
-                  const offset = offsets[stageIndex];
-                  const done = offset + stage.moves.length <= cursor;
-                  const hasNext =
-                    cursor >= offset && cursor < offset + stage.moves.length;
-                  return (
-                    <li key={stage.id}>
-                      <div className="flex items-baseline justify-between gap-2">
-                        <h3 className="text-xs font-semibold text-ink">
-                          {stage.title}
-                        </h3>
-                        {done ? (
-                          <span className="text-[10px] uppercase tracking-wide text-ink-soft">
-                            beres
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="text-[10px] leading-relaxed text-ink-soft">
-                        {stage.detail}
-                      </p>
-                      {stage.moves.length > 0 ? (
-                        <ul className="mt-1.5 flex flex-wrap gap-1">
-                          {stage.moves.map((move, index) => {
-                            const isNext = hasNext && index === cursor - offset;
-                            return (
-                              <li
-                                key={`${moveToString(move)}-${index}`}
-                                ref={isNext ? nextChipRef : undefined}
-                              >
-                                <span
-                                  className={`tnum inline-flex min-h-6 items-center rounded-[3px] border px-1.5 text-[11px] font-semibold ${
-                                    isNext
-                                      ? "border-transparent bg-accent text-accent-ink"
-                                      : "border-line text-ink-soft"
-                                  }`}
-                                >
-                                  {moveToString(move)}
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ol>
-
-              <div className="border-t border-line pt-3">
+          <div className="mt-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+            {guideMethod === "optimal" ? (
+              <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-ink-soft">Solusi optimal</span>
+                  <span className="text-[11px] text-ink-soft">
+                    Solusi terpendek
+                  </span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={loadOptimal}
                     disabled={optimalLoading}
                   >
-                    {optimalLoading
-                      ? "Menghitung..."
-                      : optimal
-                        ? "Hitung ulang"
-                        : "Lihat"}
+                    {optimalLoading ? "Menghitung..." : "Hitung ulang"}
                   </Button>
                 </div>
                 {optimalError ? (
-                  <p className="mt-1.5 text-xs text-ink-soft" role="alert">
+                  <p className="text-xs text-ink-soft" role="alert">
                     {optimalError}
+                  </p>
+                ) : solved ? (
+                  <p className="text-xs text-ink-soft" role="status">
+                    Kubus sudah selesai.
                   </p>
                 ) : optimal ? (
                   <>
-                    <p className="mt-1.5 text-[11px] text-ink-soft" aria-live="polite">
+                    <p className="text-[11px] text-ink-soft" aria-live="polite">
                       Langkah berikutnya:{" "}
                       <span className="font-semibold text-ink">
                         {optimalNext ? moveToString(optimalNext) : "-"}
                       </span>{" "}
                       · {optimalPending} langkah lagi
                     </p>
-                    <ul className="mt-1.5 flex flex-wrap gap-1">
+                    <ul className="flex flex-wrap gap-1">
                       {optimal.map((move, index) => {
                         const isNext = index === optimalCursor;
                         return (
@@ -337,11 +343,86 @@ export function SolveGuide() {
                       })}
                     </ul>
                   </>
-                ) : null}
+                ) : (
+                  <p className="text-xs text-ink-soft" role="status">
+                    {optimalLoading ? "Menghitung solusi terpendek..." : null}
+                  </p>
+                )}
               </div>
-            </div>
-          ) : null}
-        </div>
+            ) : computing ? (
+              <p className="text-xs text-ink-soft" role="status">
+                Menghitung langkah...
+              </p>
+            ) : error ? (
+              <p className="text-xs text-ink-soft" role="alert">
+                {error}
+              </p>
+            ) : solved ? (
+              <p className="text-xs text-ink-soft" role="status">
+                Kubus sudah selesai.
+              </p>
+            ) : stages ? (
+              <div className="space-y-3">
+                <p className="text-xs text-ink-soft" role="status" aria-live="polite">
+                  Langkah berikutnya:{" "}
+                  <span className="font-semibold text-ink">
+                    {nextMove ? moveToString(nextMove) : "-"}
+                  </span>{" "}
+                  · {pending} langkah lagi
+                </p>
+
+                <ol className="space-y-2.5">
+                  {stages.map((stage, stageIndex) => {
+                    const offset = offsets[stageIndex];
+                    const done = offset + stage.moves.length <= cursor;
+                    const hasNext =
+                      cursor >= offset && cursor < offset + stage.moves.length;
+                    return (
+                      <li key={stage.id}>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <h3 className="text-xs font-semibold text-ink">
+                            {stage.title}
+                          </h3>
+                          {done ? (
+                            <span className="text-[10px] uppercase tracking-wide text-ink-soft">
+                              beres
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-[10px] leading-relaxed text-ink-soft">
+                          {stage.detail}
+                        </p>
+                        {stage.moves.length > 0 ? (
+                          <ul className="mt-1.5 flex flex-wrap gap-1">
+                            {stage.moves.map((move, index) => {
+                              const isNext = hasNext && index === cursor - offset;
+                              return (
+                                <li
+                                  key={`${moveToString(move)}-${index}`}
+                                  ref={isNext ? nextChipRef : undefined}
+                                >
+                                  <span
+                                    className={`tnum inline-flex min-h-6 items-center rounded-[3px] border px-1.5 text-[11px] font-semibold ${
+                                      isNext
+                                        ? "border-transparent bg-accent text-accent-ink"
+                                        : "border-line text-ink-soft"
+                                    }`}
+                                  >
+                                    {moveToString(move)}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            ) : null}
+          </div>
+        </>
       )}
     </section>
   );

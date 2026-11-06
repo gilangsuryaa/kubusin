@@ -14,6 +14,7 @@ import {
 } from "./cube";
 import { cubeToFacelets } from "./facelets";
 import { isCrossSolved, solveBeginner, solveCross } from "./beginner";
+import { solveCfop } from "./cfop";
 import { solveOptimal } from "./optimal";
 
 const U_NORMAL: Vec3 = [0, 1, 0];
@@ -151,6 +152,85 @@ describe("solveBeginner", () => {
             break;
           case "pll-edges":
             expect(middleLayer(current)).toBe(true);
+            expect(lastLayerPiecesPlaced(current, 3)).toBe(true);
+            expect(lastLayerPlaced(current)).toBe(true);
+            expect(isSolved(current)).toBe(true);
+            break;
+        }
+      }
+    }
+  }, 120000);
+});
+
+const F2L_SLOT_HOMES: readonly { corner: Vec3; edge: Vec3 }[] = [
+  { corner: [1, -1, 1], edge: [1, 0, 1] },
+  { corner: [-1, -1, 1], edge: [-1, 0, 1] },
+  { corner: [1, -1, -1], edge: [1, 0, -1] },
+  { corner: [-1, -1, -1], edge: [-1, 0, -1] },
+];
+
+/** A piece sits home with every one of its stickers facing home. */
+function pieceSolved(state: CubeState, home: Vec3): boolean {
+  const cubie = state.find((candidate) => eq(candidate.home, home));
+  if (!cubie) return false;
+  return (
+    eq(cubie.pos, cubie.home) &&
+    stickerNormals(cubie.home).every((normal) => eq(applyMat(cubie.rot, normal), normal))
+  );
+}
+
+function f2lSlotsSolved(state: CubeState, count: number): boolean {
+  return F2L_SLOT_HOMES.slice(0, count).every(
+    (slot) => pieceSolved(state, slot.corner) && pieceSolved(state, slot.edge),
+  );
+}
+
+describe("solveCfop", () => {
+  it("solves random states end to end", () => {
+    for (let i = 0; i < 12; i += 1) {
+      const scramble = generateScramble({ count: 25 });
+      const state = applyMoves(createSolvedCube(), scramble);
+      let current = state;
+      for (const stage of solveCfop(state)) {
+        current = applyMoves(current, stage.moves);
+      }
+      expect(isSolved(current)).toBe(true);
+    }
+  }, 120000);
+
+  it("never breaks an earlier stage", () => {
+    for (let i = 0; i < 8; i += 1) {
+      const scramble = generateScramble({ count: 25 });
+      let current = applyMoves(createSolvedCube(), scramble);
+      for (const stage of solveCfop(current)) {
+        current = applyMoves(current, stage.moves);
+        switch (stage.id) {
+          case "cross":
+            expect(isCrossSolved(current)).toBe(true);
+            break;
+          case "f2l-1":
+          case "f2l-2":
+          case "f2l-3":
+          case "f2l-4": {
+            const count = Number(stage.id.slice(4));
+            expect(isCrossSolved(current)).toBe(true);
+            expect(f2lSlotsSolved(current, count)).toBe(true);
+            break;
+          }
+          case "eoll":
+            expect(f2lSlotsSolved(current, 4)).toBe(true);
+            expect(lastLayerOriented(current, 2)).toBe(true);
+            break;
+          case "ocll":
+            expect(f2lSlotsSolved(current, 4)).toBe(true);
+            expect(lastLayerOriented(current, 3)).toBe(true);
+            break;
+          case "cpll":
+            expect(f2lSlotsSolved(current, 4)).toBe(true);
+            expect(lastLayerOriented(current, 3)).toBe(true);
+            expect(lastLayerPiecesPlaced(current, 3)).toBe(true);
+            break;
+          case "epll":
             expect(lastLayerPiecesPlaced(current, 3)).toBe(true);
             expect(lastLayerPlaced(current)).toBe(true);
             expect(isSolved(current)).toBe(true);
