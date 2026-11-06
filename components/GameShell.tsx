@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { CubeCanvas } from "@/components/cube/CubeCanvas";
-import { CubePoster } from "@/components/cube/CubePoster";
 import { BestTimes } from "@/components/ui/BestTimes";
 import { Button } from "@/components/ui/Button";
 import { ColorLegend } from "@/components/ui/ColorLegend";
@@ -26,12 +25,6 @@ export function GameShell() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [introDone, setIntroDone] = useState(false);
-  /**
-   * The 3D scene is fetched and mounted only once the first paint is done. The
-   * poster covers the hero until then, so three.js and WebGL never compete with
-   * the LCP; a tap or keypress mounts it early for impatient players.
-   */
-  const [canvasReady, setCanvasReady] = useState(false);
   /** When on, face turns also rotate the middle layer (`Rw`, `Uw`, ...). */
   const [wideMode, setWideMode] = useState(false);
   /** Which run's win overlay the player already dismissed. */
@@ -54,30 +47,6 @@ export function GameShell() {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
-
-  useEffect(() => {
-    if (canvasReady) return;
-    let idleHandle: number | undefined;
-    const enable = () => setCanvasReady(true);
-    if (typeof window.requestIdleCallback === "function") {
-      idleHandle = window.requestIdleCallback(enable, { timeout: 600 });
-    } else {
-      idleHandle = window.setTimeout(enable, 200);
-    }
-    window.addEventListener("pointerdown", enable, { once: true });
-    window.addEventListener("keydown", enable, { once: true });
-    return () => {
-      if (idleHandle !== undefined) {
-        if (typeof window.cancelIdleCallback === "function") {
-          window.cancelIdleCallback(idleHandle);
-        } else {
-          window.clearTimeout(idleHandle);
-        }
-      }
-      window.removeEventListener("pointerdown", enable);
-      window.removeEventListener("keydown", enable);
-    };
-  }, [canvasReady]);
 
   useCubeSound();
 
@@ -151,14 +120,7 @@ export function GameShell() {
           className="flex min-w-0 flex-col gap-4 lg:gap-5"
         >
           <div className="h-[min(56vh,420px)] sm:h-[min(64vh,520px)] lg:h-[min(74vh,660px)]">
-            {canvasReady ? (
-              <CubeCanvas onIntroComplete={() => setIntroDone(true)} />
-            ) : (
-              <>
-                <CubePoster />
-                <span className="sr-only">Memuat kubus 3D...</span>
-              </>
-            )}
+            <CubeCanvas onIntroComplete={() => setIntroDone(true)} />
           </div>
           <ControlBar
             locked={!interactive}

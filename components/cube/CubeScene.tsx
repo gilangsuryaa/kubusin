@@ -1,8 +1,8 @@
 "use client";
 
-import { OrbitControls } from "@react-three/drei";
+import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import * as THREE from "three";
 import { usePrefersReducedMotion } from "@/hooks/useMediaQuery";
 import { useResolvedTheme } from "@/hooks/useTheme";
@@ -10,7 +10,6 @@ import { registerCameraNudge } from "@/lib/cameraBus";
 import { MOVE_DURATION_MS, moveDuration, useGameStore } from "@/store/game";
 import { CubeRig } from "./CubeRig";
 import { OrientationGroup } from "./OrientationGroup";
-import { ShadowBlob } from "./ShadowBlob";
 import { useStudioEnvironment } from "./useStudioEnvironment";
 
 const FOV = 34;
@@ -132,9 +131,13 @@ function CubeContent({ onIntroComplete }: CubeContentProps) {
           onIntroComplete={onIntroComplete}
         />
       </OrientationGroup>
-      <ShadowBlob
+      <ContactShadows
         position={[0, -1.72, 0]}
         scale={9}
+        far={4.2}
+        blur={2.6}
+        resolution={512}
+        frames={Infinity}
         opacity={dark ? 0.9 : 0.42}
         color={dark ? "#f4f2ed" : "#1b1712"}
       />
@@ -146,49 +149,12 @@ interface CubeSceneProps {
   onIntroComplete: () => void;
 }
 
-/**
- * Tells the scene when the canvas must not paint: the tab went hidden, or the
- * canvas scrolled out of view. The loop then switches to `"never"` so a running
- * intro or turn stops ticking `invalidate()` for frames nobody can see; coming
- * back repaints once at the exact animation state.
- */
-function LoopVisibility({ onChange }: { onChange: (paused: boolean) => void }) {
-  const gl = useThree((state) => state.gl);
-  const invalidate = useThree((state) => state.invalidate);
-
-  useEffect(() => {
-    const element = gl.domElement;
-    let onscreen = true;
-    const report = () => {
-      const paused = document.visibilityState === "hidden" || !onscreen;
-      if (!paused) invalidate();
-      onChange(paused);
-    };
-    const observer = new IntersectionObserver(([entry]) => {
-      onscreen = entry.isIntersecting;
-      report();
-    });
-    observer.observe(element);
-    document.addEventListener("visibilitychange", report);
-    report();
-    return () => {
-      observer.disconnect();
-      document.removeEventListener("visibilitychange", report);
-    };
-  }, [gl, invalidate, onChange]);
-
-  return null;
-}
-
 export default function CubeScene({ onIntroComplete }: CubeSceneProps) {
-  const [paused, setPaused] = useState(false);
-  const handlePause = useCallback((next: boolean) => setPaused(next), []);
-
   return (
     <Canvas
-      frameloop={paused ? "never" : "demand"}
+      frameloop="demand"
       flat
-      dpr={[1, 1.5]}
+      dpr={[1, 1.75]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       camera={{ position: CAMERA_POSITION, fov: FOV, near: 0.1, far: 80 }}
       style={{ touchAction: "none" }}
@@ -208,7 +174,6 @@ export default function CubeScene({ onIntroComplete }: CubeSceneProps) {
         target={[0, 0, 0]}
       />
       <CameraNudgeBridge />
-      <LoopVisibility onChange={handlePause} />
     </Canvas>
   );
 }
