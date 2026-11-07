@@ -107,6 +107,7 @@ function CubeContent({ onIntroComplete }: CubeContentProps) {
   const reducedMotion = usePrefersReducedMotion();
   const dark = useResolvedTheme() === "dark";
   const replaying = useGameStore((state) => state.replayingId !== null);
+  const replaySpeed = useGameStore((state) => state.replaySpeed);
   const environment = useStudioEnvironment();
   const invalidate = useThree((state) => state.invalidate);
 
@@ -116,7 +117,7 @@ function CubeContent({ onIntroComplete }: CubeContentProps) {
   }, [dark, invalidate]);
 
   const durationMs = active
-    ? moveDuration(active.source, reducedMotion, replaying)
+    ? moveDuration(active.source, reducedMotion, replaying, replaySpeed)
     : MOVE_DURATION_MS;
 
   return (

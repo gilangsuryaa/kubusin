@@ -9,7 +9,7 @@ import {
   parseMoves,
   type Face,
 } from "@/lib/cube";
-import { useGameStore } from "./game";
+import { useGameStore, moveDuration } from "./game";
 
 function resetStore(): void {
   useGameStore.setState({
@@ -25,6 +25,7 @@ function resetStore(): void {
     finalMs: null,
     bestTimes: [],
     replayingId: null,
+    replaySpeed: 1,
     hydrated: true,
     scrambleId: 0,
     orientation: DEFAULT_ORIENTATION,
@@ -461,5 +462,50 @@ describe("record replay", () => {
     expect(state.replayingId).toBeNull();
     expect(state.queue).toHaveLength(0);
     expect(state.status).toBe("idle");
+  });
+
+  it("changes the replay playback speed", () => {    expect(useGameStore.getState().replaySpeed).toBe(1);
+    useGameStore.getState().setReplaySpeed(0.5);
+    expect(useGameStore.getState().replaySpeed).toBe(0.5);
+    useGameStore.getState().setReplaySpeed(0);
+    useGameStore.getState().setReplaySpeed(-2);
+    useGameStore.getState().setReplaySpeed(99);
+    // Out-of-range requests are clamped to the usable range.
+    expect(useGameStore.getState().replaySpeed).toBe(4);
+  });
+
+  it("scales the replay pace with the chosen speed", () => {
+    const normal = moveDuration("scramble", false, true, 1);
+    const slow = moveDuration("scramble", false, true, 0.25);
+    const fast = moveDuration("scramble", false, true, 4);
+    expect(slow).toBeCloseTo(normal * 4);
+    expect(fast).toBeCloseTo(normal / 4);
+    // Non-replay timing ignores the replay speed entirely.
+    expect(moveDuration("scramble", false, false, 4)).toBe(moveDuration("scramble", false, false, 1));
+  });
+
+  it("deletes a record and stops a replay of that record", () => {
+    const kept = recordRun("R U F' L", "L' F U' R'");
+    useGameStore.setState({
+      bestTimes: [
+        ...useGameStore.getState().bestTimes,
+        { id: "extra", ms: 999, moves: 3, at: 1, scramble: "", solution: "" },
+      ],
+    });
+    useGameStore.getState().deleteBestTime("extra");
+    expect(
+      useGameStore.getState().bestTimes.some((entry) => entry.id === "extra"),
+    ).toBe(false);
+    expect(useGameStore.getState().bestTimes).toHaveLength(1);
+
+    // Deleting an unknown id changes nothing.
+    useGameStore.getState().deleteBestTime("nope");
+    expect(useGameStore.getState().bestTimes).toHaveLength(1);
+
+    // Deleting the record that is being replayed ends the rewatch.
+    useGameStore.getState().replayRecord(kept);
+    useGameStore.getState().deleteBestTime(kept);
+    expect(useGameStore.getState().replayingId).toBeNull();
+    expect(useGameStore.getState().bestTimes).toHaveLength(0);
   });
 });

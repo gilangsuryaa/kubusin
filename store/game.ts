@@ -65,7 +65,10 @@ export interface BestTime {
 }
 
 export const BEST_TIMES_KEY = "kubusin.best-times.v1";
-export const BEST_TIMES_LIMIT = 10;
+/** Every solve is kept so progress can be read back over time. */
+export const BEST_TIMES_LIMIT = 200;
+/** Playback speeds a replay can run at, slowest first. */
+export const REPLAY_SPEEDS = [0.25, 0.5, 1, 1.5, 2] as const;
 /** Storage key for the sound-effects preference. */
 export const SOUND_KEY = "kubusin.sound.v1";
 /** Storage key for the guide's chosen method. */
@@ -81,11 +84,17 @@ export function moveDuration(
   source: MoveSource,
   reducedMotion: boolean,
   replaying = false,
+  /** Playback multiplier for a replay; 1 is the default rewatch pace. */
+  replaySpeed = 1,
 ): number {
   if (reducedMotion) return MOVE_DURATION_REDUCED_MS;
   // A replay runs the whole saved solve back to back, so it gets a quicker,
-  // uniform pace instead of the scramble-then-play timing.
-  if (replaying) return REPLAY_DURATION_MS;
+  // uniform pace instead of the scramble-then-play timing. The player can slow
+  // it right down to study a solve or speed it up to skim one.
+  if (replaying) {
+    const base = Math.max(0.25, Math.min(4, replaySpeed));
+    return REPLAY_DURATION_MS / base;
+  }
   return source === "scramble" ? SCRAMBLE_DURATION_MS : MOVE_DURATION_MS;
 }
 
@@ -117,6 +126,8 @@ interface GameStore {
   bestTimes: BestTime[];
   /** The record whose solution the tracker is showing, if any. */
   replayingId: string | null;
+  /** Playback multiplier for replays: 1 is normal, lower is slower. */
+  replaySpeed: number;
   hydrated: boolean;
   /** Bumped on every scramble so the 3D layer can react if needed. */
   scrambleId: number;
@@ -159,6 +170,10 @@ interface GameStore {
   commitActive: () => void;
   /** Replay a saved record: scramble, solution, and a fresh timed run. */
   replayRecord: (id: string) => void;
+  /** Set the replay playback multiplier; clamped to the known speeds. */
+  setReplaySpeed: (speed: number) => void;
+  /** Delete one saved record; ignored when the id is unknown. */
+  deleteBestTime: (id: string) => void;
   hydrate: () => void;
 }
 
@@ -304,6 +319,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   finalMs: null,
   bestTimes: [],
   replayingId: null,
+  replaySpeed: 1,
   hydrated: false,
   scrambleId: 0,
   orientation: DEFAULT_ORIENTATION,
@@ -630,6 +646,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
     // A replayed run is already a finished record; it must not be saved again.
     set((current) => ({ ...(pullNext(current) ?? {}), assist: true }));
+  },
+
+  setReplaySpeed(speed) {
+    if (!Number.isFinite(speed) || speed <= 0) return;
+    set({ replaySpeed: Math.max(0.25, Math.min(4, speed)) });
+  },
+
+  deleteBestTime(id) {
+    const state = get();
+    if (!state.bestTimes.some((entry) => entry.id === id)) return;
+    const bestTimes = state.bestTimes.filter((entry) => entry.id !== id);
+    writeBestTimes(bestTimes);
+    // Removing the record that is playing stops the rewatch instead of leaving
+    // the board replaying something the player just deleted.
+    set({
+      bestTimes,
+      ...(state.replayingId === id ? { replayingId: null } : {}),
+    });
   },
 
   hydrate() {

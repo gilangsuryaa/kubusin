@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useT } from "@/hooks/useT";
 import { logMoveToString, moveToString } from "@/lib/cube";
-import { useGameStore } from "@/store/game";
+import { useGameStore, REPLAY_SPEEDS } from "@/store/game";
 import { Button } from "./Button";
 
 const CHIP =
@@ -11,6 +11,40 @@ const CHIP =
 /** Rotations change the hold, so they read as background notes, not turns. */
 const ROTATION_CHIP =
   "tnum inline-flex min-h-6 items-center rounded-[3px] px-1 text-[11px] font-semibold text-ink-soft/70";
+
+/** Playback slider shown while a record is being replayed. */
+function ReplaySpeed() {
+  const t = useT();
+  const replaySpeed = useGameStore((state) => state.replaySpeed);
+  const setReplaySpeed = useGameStore((state) => state.setReplaySpeed);
+  const index = Math.max(0, REPLAY_SPEEDS.indexOf(replaySpeed as never));
+  return (
+    <div className="flex items-center gap-2">
+      <label
+        htmlFor="replay-speed"
+        className="text-[10px] uppercase tracking-[0.14em] text-ink-soft"
+      >
+        {t("replay.speed")}
+      </label>
+      <input
+        id="replay-speed"
+        type="range"
+        min={0}
+        max={REPLAY_SPEEDS.length - 1}
+        step={1}
+        value={index}
+        onChange={(event) =>
+          setReplaySpeed(REPLAY_SPEEDS[Number(event.target.value)])
+        }
+        aria-valuetext={t("replay.speedValue", { speed: `${replaySpeed}x` })}
+        className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-line accent-ink"
+      />
+      <span className="tnum w-10 shrink-0 text-right text-[11px] font-medium text-ink">
+        {replaySpeed}x
+      </span>
+    </div>
+  );
+}
 
 /** One titled row: heading, a move count, and the move chips. */
 function LogGroup({
@@ -150,6 +184,7 @@ export function MoveTracker() {
           <p className="text-[11px] leading-relaxed text-ink-soft">
             {t("tracker.replaying")}
           </p>
+          <ReplaySpeed />
           <LogGroup
             title={t("tracker.scramble")}
             moves={scramble.map(moveToString)}

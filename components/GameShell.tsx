@@ -119,8 +119,9 @@ export function GameShell() {
         </header>
 
         <section
+          id="kubusin-board"
           aria-label={t("shell.boardAria")}
-          className="flex min-w-0 flex-col gap-4 lg:gap-5"
+          className="flex min-w-0 flex-col gap-4 scroll-mt-4 lg:gap-5"
         >
           <div className="h-[min(56vh,420px)] sm:h-[min(64vh,520px)] lg:h-[min(74vh,660px)]">
             <CubeCanvas onIntroComplete={() => setIntroDone(true)} />

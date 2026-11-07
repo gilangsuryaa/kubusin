@@ -54,6 +54,8 @@ const id = {
     "Rekor ini sedang diputar ulang: acakan dan langkah tersimpan dimainkan lagi di papan.",
   "tracker.savedMoves": "Langkah tersimpan",
   "tracker.savedMovesAria": "Langkah tersimpan dari rekor ini",
+  "replay.speed": "Kecepatan",
+  "replay.speedValue": "Kecepatan putar ulang {speed}",
 
   // Best times.
   "best.aria": "Waktu terbaik",
@@ -65,6 +67,16 @@ const id = {
   "best.replayTitle":
     "Acakan dan langkah rekor ini diputar ulang di papan, dengan waktu baru",
   "best.replayUnavailable": "Langkah rekor ini tidak tersimpan",
+  "best.sortAria": "Urutan daftar rekor",
+  "best.sortFastest": "Tercepat",
+  "best.sortNewest": "Terbaru",
+  "best.addedAria": "Ditambahkan pada {date}",
+  "best.delete": "Hapus rekor",
+  "best.deleteAria": "Hapus rekor {time} yang ditambahkan pada {date}",
+  "best.deleteTitle": "Hapus rekor ini?",
+  "best.deleteDesc":
+    "Penyelesaian {time} dengan {count} langkah dari {date} akan dihapus permanen. Rekor lain tetap tersimpan.",
+  "best.deleteConfirm": "Ya, hapus",
 
   // Live region (screen reader).
   "live.solved": "Kubus selesai. Waktu {time} dengan {count} langkah.",
@@ -325,6 +337,8 @@ const en: Record<MessageKey, string> = {
     "Replaying this record: its saved scramble and moves are being played again on the board.",
   "tracker.savedMoves": "Saved moves",
   "tracker.savedMovesAria": "The moves saved with this record",
+  "replay.speed": "Speed",
+  "replay.speedValue": "Replay speed {speed}",
 
   "best.aria": "Best times",
   "best.title": "Best records",
@@ -334,6 +348,16 @@ const en: Record<MessageKey, string> = {
   "best.replayTitle":
     "Replays this record's scramble and moves on the board with a fresh timer",
   "best.replayUnavailable": "This record's moves were not saved",
+  "best.sortAria": "Order of the record list",
+  "best.sortFastest": "Fastest",
+  "best.sortNewest": "Newest",
+  "best.addedAria": "Added on {date}",
+  "best.delete": "Delete record",
+  "best.deleteAria": "Delete the {time} record added on {date}",
+  "best.deleteTitle": "Delete this record?",
+  "best.deleteDesc":
+    "The {time} solve with {count} moves from {date} will be removed for good. Other records stay.",
+  "best.deleteConfirm": "Yes, delete",
 
   "live.solved": "Cube solved. Time {time} with {count} moves.",
   "live.scrambling": "Scrambling the cube.",
