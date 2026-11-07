@@ -1,17 +1,22 @@
 "use client";
 
+import { useT } from "@/hooks/useT";
 import { OPPOSITE_FACE, type Face } from "@/lib/cube";
 import {
   FACE_COLORS,
   FACE_COLOR_NAMES,
   FACE_ON_COLOR,
 } from "@/lib/cubeColors";
+import type { MessageKey } from "@/lib/i18n";
 import { useGameStore } from "@/store/game";
 import { Button } from "./Button";
 
 const SWATCH_ORDER: Face[] = ["U", "D", "F", "B", "R", "L"];
 
-const ROLE_LABEL = { front: "depan", up: "atas" } as const;
+const ROLE_KEY: Record<"front" | "up", MessageKey> = {
+  front: "orientation.role.front",
+  up: "orientation.role.up",
+};
 
 function Swatches({
   role,
@@ -27,23 +32,35 @@ function Swatches({
   disabled: boolean;
   onPick: (face: Face) => void;
 }) {
+  const t = useT();
   const otherRole = role === "front" ? "up" : "front";
   return (
     <div className="flex flex-wrap gap-1.5">
       {SWATCH_ORDER.map((face) => {
         const selected = face === value;
         const unavailable = face === blocked;
+        const color = t(FACE_COLOR_NAMES[face]);
         return (
           <button
             key={face}
             type="button"
             disabled={disabled || unavailable}
             aria-pressed={selected}
-            aria-label={`${face} — ${FACE_COLOR_NAMES[face]} sebagai sisi ${ROLE_LABEL[role]}`}
+            aria-label={t("orientation.swatchAria", {
+              face,
+              color,
+              role: t(ROLE_KEY[role]),
+            })}
             title={
               unavailable
-                ? `${FACE_COLOR_NAMES[face]} berseberangan dengan sisi ${ROLE_LABEL[otherRole]}`
-                : `${FACE_COLOR_NAMES[face]} sebagai sisi ${ROLE_LABEL[role]}`
+                ? t("orientation.swatchBlocked", {
+                    color,
+                    role: t(ROLE_KEY[otherRole]),
+                  })
+                : t("orientation.swatchTitle", {
+                    color,
+                    role: t(ROLE_KEY[role]),
+                  })
             }
             onClick={() => onPick(face)}
             style={{
@@ -70,6 +87,7 @@ function Swatches({
  * both the 3D view and the key mapping update together.
  */
 export function OrientationPanel() {
+  const t = useT();
   const orientation = useGameStore((state) => state.orientation);
   const setOrientation = useGameStore((state) => state.setOrientation);
   const assist = useGameStore((state) => state.assist);
@@ -91,7 +109,7 @@ export function OrientationPanel() {
           id="orientation-title"
           className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-soft"
         >
-          Orientasi
+          {t("orientation.title")}
         </h2>
         <Button
           variant="bare"
@@ -99,23 +117,23 @@ export function OrientationPanel() {
           className="px-1.5"
           disabled={isDefault || locked}
           onClick={() => setOrientation("F", "U")}
-          title="Kembalikan ke orientasi standar"
+          title={t("orientation.resetTitle")}
         >
-          Standar
+          {t("orientation.reset")}
         </Button>
       </div>
       <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
-        {assist
-          ? "Orientasi dikunci ke standar selama panduan aktif."
-          : "Pilih warna yang menghadap depan dan atas. Huruf F, U, dan lainnya mengikuti pilihan ini."}
+        {assist ? t("orientation.locked") : t("orientation.help")}
       </p>
       <div className="mt-3 space-y-2">
         <div
           role="group"
-          aria-label="Warna sisi depan"
+          aria-label={t("orientation.frontGroupAria")}
           className="flex items-center gap-3"
         >
-          <span className="w-16 shrink-0 text-xs text-ink-soft">Depan · F</span>
+          <span className="w-16 shrink-0 text-xs text-ink-soft">
+            {t("orientation.frontLabel")}
+          </span>
           <Swatches
             role="front"
             value={orientation.front}
@@ -126,10 +144,12 @@ export function OrientationPanel() {
         </div>
         <div
           role="group"
-          aria-label="Warna sisi atas"
+          aria-label={t("orientation.upGroupAria")}
           className="flex items-center gap-3"
         >
-          <span className="w-16 shrink-0 text-xs text-ink-soft">Atas · U</span>
+          <span className="w-16 shrink-0 text-xs text-ink-soft">
+            {t("orientation.upLabel")}
+          </span>
           <Swatches
             role="up"
             value={orientation.up}

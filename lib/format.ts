@@ -17,9 +17,11 @@ export function formatMoves(count: number): string {
   return `${count} langkah`;
 }
 
-export function formatDate(timestamp: number): string {
+import { LOCALE_TAG, type Locale } from "./i18n";
+
+export function formatDate(timestamp: number, locale: Locale = "id"): string {
   try {
-    return new Intl.DateTimeFormat("id-ID", {
+    return new Intl.DateTimeFormat(LOCALE_TAG[locale], {
       day: "numeric",
       month: "short",
       hour: "2-digit",

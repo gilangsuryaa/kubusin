@@ -19,6 +19,12 @@ import {
   type MoveName,
   type Turns,
 } from "@/lib/cube";
+import {
+  applyLocale,
+  readStoredLocale,
+  writeStoredLocale,
+  type Locale,
+} from "@/lib/i18n";
 
 export type GameStatus = "idle" | "scrambling" | "ready" | "running" | "solved";
 /** Where a queued turn came from; only `user` turns start the timer and count. */
@@ -95,6 +101,8 @@ interface GameStore {
   guideMethod: GuideMethod;
   /** Sound effects for turns and the win chime. On unless the player opted out. */
   soundOn: boolean;
+  /** UI language, Indonesian by default. */
+  locale: Locale;
 
   requestMove: (name: MoveName, turns: Turns, wide?: boolean) => void;
   /** Change the hold; `front` and `up` must be perpendicular physical faces. */
@@ -107,6 +115,8 @@ interface GameStore {
   setGuideMethod: (method: GuideMethod) => void;
   /** Flip the sound-effects preference and remember it. */
   toggleSound: () => void;
+  /** Switch the UI language and remember it. */
+  setLocale: (locale: Locale) => void;
   requestScramble: () => void;
   requestUndo: () => void;
   requestReset: () => void;
@@ -242,6 +252,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   assist: false,
   guideMethod: "beginner",
   soundOn: true,
+  locale: "id",
 
   requestMove(name, turns, wide = false) {
     const { status, active, orientation } = get();
@@ -295,6 +306,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       writeSound(on);
       return { soundOn: on };
     });
+  },
+
+  setLocale(locale) {
+    writeStoredLocale(locale);
+    applyLocale(locale);
+    set({ locale });
   },
 
   requestScramble() {
@@ -441,10 +458,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   hydrate() {
+    const locale = readStoredLocale();
+    applyLocale(locale);
     set({
       bestTimes: readBestTimes(),
       soundOn: readSound(),
       guideMethod: readGuideMethod(),
+      locale,
       hydrated: true,
     });
   },

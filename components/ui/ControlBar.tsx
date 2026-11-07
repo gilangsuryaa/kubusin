@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/hooks/useT";
 import type { Face, Slice, Turns } from "@/lib/cube";
 import { FACE_COLOR_LABELS } from "@/lib/cubeColors";
 import { useGameStore } from "@/store/game";
@@ -48,6 +49,7 @@ export function ControlBar({
   onToggleWide: () => void;
   onResetRequest: () => void;
 }) {
+  const t = useT();
   const requestMove = useGameStore((state) => state.requestMove);
   const requestScramble = useGameStore((state) => state.requestScramble);
   const requestUndo = useGameStore((state) => state.requestUndo);
@@ -57,6 +59,7 @@ export function ControlBar({
   const busy = status === "scrambling";
   const undoDisabled = locked || busy || status === "solved" || moveCount === 0;
   const resetDisabled = locked || busy || status === "idle";
+  const wideState = t(wide ? "control.wideOn" : "control.wideOff");
 
   return (
     <div className="flex flex-col gap-3">
@@ -65,28 +68,28 @@ export function ControlBar({
           variant="primary"
           disabled={locked}
           onClick={requestScramble}
-          aria-label="Acak kubus"
-          title="Acak kubus (Spasi)"
+          aria-label={t("control.scrambleAria")}
+          title={t("control.scrambleTitle")}
         >
-          Acak
+          {t("control.scramble")}
         </Button>
         <Button
           variant="outline"
           disabled={undoDisabled}
           onClick={requestUndo}
-          aria-label="Urungkan langkah terakhir"
-          title="Urungkan (Backspace)"
+          aria-label={t("control.undoAria")}
+          title={t("control.undoTitle")}
         >
-          Urungkan
+          {t("control.undo")}
         </Button>
         <Button
           variant="outline"
           disabled={resetDisabled}
           onClick={onResetRequest}
-          aria-label="Reset kubus ke kondisi selesai"
-          title="Reset (Enter)"
+          aria-label={t("control.resetAria")}
+          title={t("control.resetTitle")}
         >
-          Reset
+          {t("control.reset")}
         </Button>
       </div>
 
@@ -95,21 +98,25 @@ export function ControlBar({
         disabled={locked || busy}
         onClick={onToggleWide}
         aria-pressed={wide}
-        aria-label={`Mode wide moves ${wide ? "aktif" : "nonaktif"}: putar sisi bersama lapisan tengah`}
-        title="Wide moves: putar dua lapisan sekaligus (W)"
+        aria-label={t("control.wideModeAria", { state: wideState })}
+        title={t("control.wideTitle")}
       >
         <span className="font-semibold">W</span>
-        <span>Wide {wide ? "aktif" : "nonaktif"}</span>
+        <span>{t("control.wide", { state: wideState })}</span>
       </Button>
 
       <div className="grid grid-cols-6 gap-1.5">
         {TURN_ORDER.flatMap((face) =>
           TURNS.map((turns) => {
             const clockwise = turns === 1;
-            const scope = wide ? "dua lapisan" : "sisi";
-            const label = `${FACE_COLOR_LABELS[face]} ${
-              clockwise ? "searah" : "berlawanan arah"
-            } jarum jam`;
+            const scope = t(wide ? "control.scopeWide" : "control.scopeFace");
+            const direction = t(
+              clockwise ? "control.faceDir.clockwise" : "control.faceDir.counter",
+            );
+            const label = t("control.faceLabel", {
+              color: t(FACE_COLOR_LABELS[face]),
+              direction,
+            });
             const notation = `${face}${wide ? "w" : ""}${clockwise ? "" : "'"}`;
             return (
               <Button
@@ -118,8 +125,8 @@ export function ControlBar({
                 size="sm"
                 disabled={locked || busy}
                 onClick={() => requestMove(face, turns, wide)}
-                aria-label={`Putar ${scope} ${label} (${notation})`}
-                title={`${notation} — ${label}`}
+                aria-label={t("control.turnAria", { scope, label, notation })}
+                title={t("control.turnTitle", { notation, label })}
               >
                 <span className="font-semibold">{face}</span>
                 <TurnIcon clockwise={clockwise} />
@@ -131,14 +138,22 @@ export function ControlBar({
 
       <div
         role="group"
-        aria-label="Putar lapisan tengah"
+        aria-label={t("control.sliceGroupAria")}
         className="grid grid-cols-6 gap-1.5"
       >
         {SLICE_ORDER.flatMap((slice) =>
           TURNS.map((turns) => {
             const clockwise = turns === 1;
             const follows = SLICE_FOLLOWS[slice];
-            const label = `${clockwise ? "searah" : "berlawanan arah"} ${follows}`;
+            const notation = `${slice}${clockwise ? "" : "'"}`;
+            const label = t("control.sliceLabel", {
+              direction: t(
+                clockwise
+                  ? "control.sliceDir.clockwise"
+                  : "control.sliceDir.counter",
+              ),
+              follows,
+            });
             return (
               <Button
                 key={`${slice}${turns}`}
@@ -146,8 +161,8 @@ export function ControlBar({
                 size="sm"
                 disabled={locked || busy}
                 onClick={() => requestMove(slice, turns)}
-                aria-label={`Putar lapisan tengah ${label} (${slice}${clockwise ? "" : "'"})`}
-                title={`${slice}${clockwise ? "" : "'"} — lapisan tengah ${label}`}
+                aria-label={t("control.sliceAria", { label, notation })}
+                title={t("control.sliceTitle", { notation, label })}
               >
                 <span className="font-semibold">{slice}</span>
                 <TurnIcon clockwise={clockwise} />

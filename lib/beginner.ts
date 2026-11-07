@@ -17,6 +17,7 @@ import {
   type Move,
   type Vec3,
 } from "./cube";
+import type { MessageKey, Vars } from "./i18n";
 import {
   alg,
   CORNERS,
@@ -239,59 +240,61 @@ export function isCrossSolved(state: CubeState): boolean {
 
 export interface SolveStage {
   readonly id: string;
-  readonly title: string;
-  readonly detail: string;
+  readonly title: MessageKey;
+  readonly detail: MessageKey;
+  /** Values for `{placeholders}` in the title or detail. */
+  readonly vars?: Vars;
   readonly moves: readonly Move[];
 }
 
 interface StageDefinition {
   readonly id: string;
-  readonly title: string;
-  readonly detail: string;
+  readonly title: MessageKey;
+  readonly detail: MessageKey;
   readonly solve: (state: CubeState) => Move[];
 }
 
 const STAGES: readonly StageDefinition[] = [
   {
     id: "cross",
-    title: "Cross lapisan bawah",
-    detail: "Susun empat tepi kuning mengelilingi pusat kuning di sisi bawah.",
+    title: "guide.stage.b.cross.title",
+    detail: "guide.stage.b.cross.detail",
     solve: CROSS,
   },
   {
     id: "corners",
-    title: "Sudut lapisan bawah",
-    detail: "Masukkan empat sudut kuning ke lapisan bawah.",
+    title: "guide.stage.b.corners.title",
+    detail: "guide.stage.b.corners.detail",
     solve: CORNER,
   },
   {
     id: "middle",
-    title: "Lapisan tengah",
-    detail: "Selipkan empat tepi tengah yang tidak berwarna putih.",
+    title: "guide.stage.b.middle.title",
+    detail: "guide.stage.b.middle.detail",
     solve: MIDDLE,
   },
   {
     id: "white-cross",
-    title: "Cross lapisan atas",
-    detail: "Bentuk palang putih di sisi atas.",
+    title: "guide.stage.b.whiteCross.title",
+    detail: "guide.stage.b.whiteCross.detail",
     solve: WHITE_CROSS,
   },
   {
     id: "oll-corners",
-    title: "Orientasi sudut atas",
-    detail: "Balik sudut atas sampai warna putih menghadap atas.",
+    title: "guide.stage.b.ollCorners.title",
+    detail: "guide.stage.b.ollCorners.detail",
     solve: OLL_CORNERS,
   },
   {
     id: "pll-corners",
-    title: "Susun sudut atas",
-    detail: "Pindahkan sudut putih ke posisi akhirnya.",
+    title: "guide.stage.b.pllCorners.title",
+    detail: "guide.stage.b.pllCorners.detail",
     solve: PLL_CORNERS,
   },
   {
     id: "pll-edges",
-    title: "Susun tepi atas",
-    detail: "Pindahkan tepi putih agar kubus selesai.",
+    title: "guide.stage.b.pllEdges.title",
+    detail: "guide.stage.b.pllEdges.detail",
     solve: PLL_EDGES,
   },
 ];

@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useT } from "@/hooks/useT";
+import type { MessageKey } from "@/lib/i18n";
 import { ColorLegend } from "./ColorLegend";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
@@ -17,25 +19,78 @@ function Key({ children }: { children: ReactNode }) {
   );
 }
 
-const KEY_ROWS: { keys: string[]; description: string }[] = [
-  { keys: ["U", "D", "L", "R", "F", "B"], description: "Putar sisi searah jarum jam" },
-  { keys: ["Shift", "+ huruf"], description: "Putar sisi berlawanan arah jarum jam" },
-  { keys: ["M", "E", "S"], description: "Putar lapisan tengah (M ikut L, E ikut D, S ikut F)" },
-  { keys: ["Shift", "+ M/E/S"], description: "Putar lapisan tengah berlawanan arah" },
-  { keys: ["W"], description: "Aktifkan/nonaktifkan wide moves: sisi + lapisan tengah (mis. Rw)" },
-  { keys: ["x", "y", "z"], description: "Putar seluruh kubus (x ikut R, y ikut U, z ikut F)" },
-  { keys: ["Shift", "+ x/y/z"], description: "Putar seluruh kubus berlawanan arah" },
-  { keys: ["←", "↑", "→", "↓"], description: "Putar kamera" },
-  { keys: ["Spasi"], description: "Acak kubus dan mulai sesi (20–25 langkah)" },
-  { keys: ["Backspace"], description: "Urungkan langkah terakhir" },
-  { keys: ["Enter"], description: "Reset ke kondisi selesai (dengan konfirmasi)" },
-  { keys: ["?"], description: "Buka atau tutup panel ini" },
+/** A keycap is either a literal key name or a translated word. */
+type Keycap = string | { text: MessageKey };
+
+interface HelpRow {
+  readonly keys: readonly Keycap[];
+  readonly description: MessageKey;
+}
+
+const KEY_ROWS: readonly HelpRow[] = [
+  {
+    keys: ["U", "D", "L", "R", "F", "B"],
+    description: "help.row.faceCw",
+  },
+  {
+    keys: ["Shift", { text: "help.key.letter" }],
+    description: "help.row.faceCcw",
+  },
+  {
+    keys: ["M", "E", "S"],
+    description: "help.row.middle",
+  },
+  {
+    keys: ["Shift", { text: "help.key.middle" }],
+    description: "help.row.middleCcw",
+  },
+  {
+    keys: ["W"],
+    description: "help.row.wide",
+  },
+  {
+    keys: ["x", "y", "z"],
+    description: "help.row.cube",
+  },
+  {
+    keys: ["Shift", { text: "help.key.cube" }],
+    description: "help.row.cubeCcw",
+  },
+  {
+    keys: ["←", "↑", "→", "↓"],
+    description: "help.row.camera",
+  },
+  {
+    keys: [{ text: "help.key.space" }],
+    description: "help.row.scramble",
+  },
+  {
+    keys: ["Backspace"],
+    description: "help.row.undo",
+  },
+  {
+    keys: ["Enter"],
+    description: "help.row.reset",
+  },
+  {
+    keys: ["?"],
+    description: "help.row.help",
+  },
 ];
 
-const POINTER_ROWS: { keys: string[]; description: string }[] = [
-  { keys: ["Seret"], description: "Putar kamera" },
-  { keys: ["Scroll"], description: "Zoom in dan out" },
-  { keys: ["Cubit"], description: "Zoom di layar sentuh" },
+const POINTER_ROWS: readonly HelpRow[] = [
+  {
+    keys: [{ text: "help.pointer.drag" }],
+    description: "help.pointer.dragDesc",
+  },
+  {
+    keys: [{ text: "help.pointer.scroll" }],
+    description: "help.pointer.scrollDesc",
+  },
+  {
+    keys: [{ text: "help.pointer.pinch" }],
+    description: "help.pointer.pinchDesc",
+  },
 ];
 
 export function HelpPanel({
@@ -45,23 +100,27 @@ export function HelpPanel({
   open: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
+  const renderKey = (key: Keycap) =>
+    typeof key === "string" ? key : t(key.text);
+
   return (
     <Dialog open={open} labelledBy="help-title" onClose={onClose}>
       <div className="max-h-[82vh] overflow-y-auto p-5 sm:p-6">
         <header className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-soft">
-              Bantuan
+              {t("help.eyebrow")}
             </p>
             <h2 id="help-title" className="mt-1 text-xl font-semibold tracking-tight">
-              Kontrol
+              {t("help.title")}
             </h2>
           </div>
           <Button
             variant="bare"
             size="icon"
             onClick={onClose}
-            aria-label="Tutup bantuan"
+            aria-label={t("help.closeAria")}
             data-autofocus="true"
           >
             <span aria-hidden="true">✕</span>
@@ -73,66 +132,56 @@ export function HelpPanel({
             <div key={row.description} className="flex items-baseline gap-4 py-2.5">
               <dt className="shrink-0">
                 <Keys>
-                  {row.keys.map((key) => (
-                    <Key key={key}>{key}</Key>
+                  {row.keys.map((key, index) => (
+                    <Key key={index}>{renderKey(key)}</Key>
                   ))}
                 </Keys>
               </dt>
-              <dd className="text-xs text-ink-soft">{row.description}</dd>
+              <dd className="text-xs text-ink-soft">{t(row.description)}</dd>
             </div>
           ))}
         </dl>
 
         <p className="mt-3 text-[11px] leading-relaxed text-ink-soft">
-          Rekor hanya dicatat untuk sesi yang dimulai dengan acak (Spasi).
-          Memutar kubus yang sudah selesai tidak dihitung sebagai penyelesaian.
+          {t("help.rules")}
         </p>
 
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
-          Panel Panduan menampilkan langkah penyelesaian bertahap dan menyorot
-          langkah berikutnya. Saat dinyalakan, pilih metodenya: Metode Pemula
-          (lapis demi lapis), CFOP (cross, F2L, OLL, PLL), atau Optimal (solusi
-          terpendek). Saat panduan aktif, orientasi dikunci ke standar dan waktu
-          tidak masuk rekor. Rencana tetap sama selama langkahnya kamu ikuti dan
-          hanya dihitung ulang bila kubus keluar jalur.
+          {t("help.guide")}
         </p>
 
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
-          Panel Pencatat gerakan mencatat urutan acakan dan setiap langkah yang
-          kamu putar, dalam notasi, untuk dianalisis atau disalin.
+          {t("help.tracker")}
         </p>
 
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
-          Setiap putaran berbunyi klik dan kubus selesai memainkan nada singkat.
-          Tombol pengeras suara di header menyalakan atau mematikan suara, dan
-          pilihannya disimpan di perangkat.
+          {t("help.sound")}
         </p>
 
         <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">
-          Hanya rotasi seluruh kubus (x y z) dan pemilihan manual di panel
-          Orientasi yang mengubah orientasi. Langkah biasa, slice (M E S), dan
-          wide moves (W) tidak mengubahnya.
+          {t("help.orientation")}
         </p>
 
         <h3 className="mt-6 text-[11px] font-medium uppercase tracking-[0.22em] text-ink-soft">
-          Mouse dan sentuhan
+          {t("help.mouseTouch")}
         </h3>
         <dl className="mt-2 divide-y divide-line">
           {POINTER_ROWS.map((row) => (
             <div key={row.description} className="flex items-baseline gap-4 py-2.5">
-              <dt className="w-16 shrink-0 text-xs font-medium">{row.keys[0]}</dt>
-              <dd className="text-xs text-ink-soft">{row.description}</dd>
+              <dt className="w-16 shrink-0 text-xs font-medium">
+                {renderKey(row.keys[0])}
+              </dt>
+              <dd className="text-xs text-ink-soft">{t(row.description)}</dd>
             </div>
           ))}
         </dl>
 
         <h3 className="mt-6 text-[11px] font-medium uppercase tracking-[0.22em] text-ink-soft">
-          Huruf dan warna
+          {t("help.lettersColors")}
         </h3>
         <ColorLegend className="mt-3" />
         <p className="mt-3 text-[11px] leading-relaxed text-ink-soft">
-          Atur panel Orientasi untuk memilih warna yang dianggap depan dan
-          atas; huruf tombol akan mengikuti pilihan itu.
+          {t("help.legend")}
         </p>
       </div>
     </Dialog>

@@ -58,10 +58,11 @@ export const viewport = {
 };
 
 /**
- * Runs before paint so a stored theme is on <html> with no flash. Kept as a
- * literal here: the layout is static, so this ships in the initial HTML.
+ * Runs before paint so a stored theme is on <html> with no flash, and the
+ * stored language is reflected in `lang`. Kept as a literal here: the layout is
+ * static, so this ships in the initial HTML.
  */
-const themeScript = `(function(){try{var t=localStorage.getItem("kubusin.theme.v1");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t}}catch(e){}})();`;
+const bootScript = `(function(){try{var t=localStorage.getItem("kubusin.theme.v1");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t}var l=localStorage.getItem("kubusin.locale.v1");if(l==="en"){document.documentElement.lang="en-US"}else if(l==="id"){document.documentElement.lang="id-ID"}}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -71,7 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
       <body className="min-h-full bg-bg text-ink">{children}</body>
     </html>

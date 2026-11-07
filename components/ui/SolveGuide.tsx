@@ -1,29 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "@/hooks/useT";
 import { solveBeginner, type SolveStage } from "@/lib/beginner";
 import { solveCfop } from "@/lib/cfop";
 import { isSolved, moveToString, type CubeState, type Move } from "@/lib/cube";
 import { planCursor } from "@/lib/guide";
+import type { MessageKey } from "@/lib/i18n";
 import { solveOptimal } from "@/lib/optimal";
 import { useGameStore, type GuideMethod } from "@/store/game";
 import { Button } from "./Button";
 
-const METHOD_OPTIONS: readonly { id: GuideMethod; label: string; title: string }[] = [
+const METHOD_OPTIONS: readonly {
+  id: GuideMethod;
+  label: MessageKey;
+  title: MessageKey;
+}[] = [
   {
     id: "beginner",
-    label: "Metode Pemula",
-    title: "Selesaikan lapis demi lapis, dari cross bawah sampai lapis atas.",
+    label: "guide.method.beginner.label",
+    title: "guide.method.beginner.title",
   },
   {
     id: "cfop",
-    label: "CFOP",
-    title: "Cross, F2L, lalu OLL dan PLL — metode cepat yang populer.",
+    label: "guide.method.cfop.label",
+    title: "guide.method.cfop.title",
   },
   {
     id: "optimal",
-    label: "Optimal",
-    title: "Solusi terpendek dari keadaan kubus saat ini.",
+    label: "guide.method.optimal.label",
+    title: "guide.method.optimal.title",
   },
 ];
 
@@ -45,6 +51,7 @@ const METHOD_OPTIONS: readonly { id: GuideMethod; label: string; title: string }
  * the path it predicted.
  */
 export function SolveGuide() {
+  const t = useT();
   const assist = useGameStore((state) => state.assist);
   const setAssist = useGameStore((state) => state.setAssist);
   const guideMethod = useGameStore((state) => state.guideMethod);
@@ -57,11 +64,11 @@ export function SolveGuide() {
   const [stages, setStages] = useState<SolveStage[] | null>(null);
   const [cursor, setCursor] = useState(0);
   const [computing, setComputing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<MessageKey | null>(null);
   const [optimal, setOptimal] = useState<Move[] | null>(null);
   const [optimalCursor, setOptimalCursor] = useState(0);
   const [optimalLoading, setOptimalLoading] = useState(false);
-  const [optimalError, setOptimalError] = useState<string | null>(null);
+  const [optimalError, setOptimalError] = useState<MessageKey | null>(null);
 
   /** The exact plan the cursor refers to, with its starting cube and method. */
   const planRef = useRef<{
@@ -98,7 +105,7 @@ export function SolveGuide() {
       setOptimalCursor(0);
     } catch {
       if (token !== optimalToken.current) return;
-      setOptimalError("Solusi optimal gagal dihitung.");
+      setOptimalError("guide.optimalError");
     } finally {
       if (token === optimalToken.current) setOptimalLoading(false);
     }
@@ -196,7 +203,7 @@ export function SolveGuide() {
       } catch {
         planRef.current = null;
         setStages(null);
-        setError("Panduan gagal dihitung untuk susunan ini.");
+        setError("guide.stagedError");
       } finally {
         setComputing(false);
       }
@@ -247,7 +254,7 @@ export function SolveGuide() {
           id="guide-title"
           className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-soft"
         >
-          Panduan
+          {t("guide.title")}
         </h2>
         <Button
           variant={assist ? "primary" : "outline"}
@@ -255,21 +262,19 @@ export function SolveGuide() {
           aria-pressed={assist}
           onClick={() => setAssist(!assist)}
         >
-          {assist ? "Aktif" : "Nyalakan"}
+          {assist ? t("guide.on") : t("guide.turnOn")}
         </Button>
       </div>
 
       <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
-        {assist
-          ? "Ikuti langkah yang disorot. Orientasi dikunci ke standar dan waktu tidak masuk rekor."
-          : "Nyalakan untuk memilih metode dan melihat langkah penyelesaian lengkap."}
+        {assist ? t("guide.assistOnHint") : t("guide.assistOffHint")}
       </p>
 
       {!assist ? null : (
         <>
           <div
             role="radiogroup"
-            aria-label="Metode penyelesaian"
+            aria-label={t("guide.methodGroupAria")}
             className="mt-3 grid grid-cols-3 gap-1"
           >
             {METHOD_OPTIONS.map((option) => (
@@ -279,11 +284,11 @@ export function SolveGuide() {
                 size="sm"
                 role="radio"
                 aria-checked={guideMethod === option.id}
-                title={option.title}
+                title={t(option.title)}
                 className="truncate px-1.5"
                 onClick={() => setGuideMethod(option.id)}
               >
-                {option.label}
+                {t(option.label)}
               </Button>
             ))}
           </div>
@@ -293,7 +298,7 @@ export function SolveGuide() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] text-ink-soft">
-                    Solusi terpendek
+                    {t("guide.shortest")}
                   </span>
                   <Button
                     variant="outline"
@@ -301,25 +306,25 @@ export function SolveGuide() {
                     onClick={loadOptimal}
                     disabled={optimalLoading}
                   >
-                    {optimalLoading ? "Menghitung..." : "Hitung ulang"}
+                    {optimalLoading ? t("guide.computing") : t("guide.recompute")}
                   </Button>
                 </div>
                 {optimalError ? (
                   <p className="text-xs text-ink-soft" role="alert">
-                    {optimalError}
+                    {t(optimalError)}
                   </p>
                 ) : solved ? (
                   <p className="text-xs text-ink-soft" role="status">
-                    Kubus sudah selesai.
+                    {t("guide.solved")}
                   </p>
                 ) : optimal ? (
                   <>
                     <p className="text-[11px] text-ink-soft" aria-live="polite">
-                      Langkah berikutnya:{" "}
+                      {t("guide.nextMove")}{" "}
                       <span className="font-semibold text-ink">
                         {optimalNext ? moveToString(optimalNext) : "-"}
                       </span>{" "}
-                      · {optimalPending} langkah lagi
+                      {t("guide.movesLeft", { count: optimalPending })}
                     </p>
                     <ul className="flex flex-wrap gap-1">
                       {optimal.map((move, index) => {
@@ -345,30 +350,30 @@ export function SolveGuide() {
                   </>
                 ) : (
                   <p className="text-xs text-ink-soft" role="status">
-                    {optimalLoading ? "Menghitung solusi terpendek..." : null}
+                    {optimalLoading ? t("guide.computingShortest") : null}
                   </p>
                 )}
               </div>
             ) : computing ? (
               <p className="text-xs text-ink-soft" role="status">
-                Menghitung langkah...
+                {t("guide.computingSteps")}
               </p>
             ) : error ? (
               <p className="text-xs text-ink-soft" role="alert">
-                {error}
+                {t(error)}
               </p>
             ) : solved ? (
               <p className="text-xs text-ink-soft" role="status">
-                Kubus sudah selesai.
+                {t("guide.solved")}
               </p>
             ) : stages ? (
               <div className="space-y-3">
                 <p className="text-xs text-ink-soft" role="status" aria-live="polite">
-                  Langkah berikutnya:{" "}
+                  {t("guide.nextMove")}{" "}
                   <span className="font-semibold text-ink">
                     {nextMove ? moveToString(nextMove) : "-"}
                   </span>{" "}
-                  · {pending} langkah lagi
+                  {t("guide.movesLeft", { count: pending })}
                 </p>
 
                 <ol className="space-y-2.5">
@@ -381,16 +386,16 @@ export function SolveGuide() {
                       <li key={stage.id}>
                         <div className="flex items-baseline justify-between gap-2">
                           <h3 className="text-xs font-semibold text-ink">
-                            {stage.title}
+                            {t(stage.title, stage.vars)}
                           </h3>
                           {done ? (
                             <span className="text-[10px] uppercase tracking-wide text-ink-soft">
-                              beres
+                              {t("guide.done")}
                             </span>
                           ) : null}
                         </div>
                         <p className="text-[10px] leading-relaxed text-ink-soft">
-                          {stage.detail}
+                          {t(stage.detail, stage.vars)}
                         </p>
                         {stage.moves.length > 0 ? (
                           <ul className="mt-1.5 flex flex-wrap gap-1">

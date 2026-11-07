@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/hooks/useT";
 import { useGameStore } from "@/store/game";
 import { Button } from "./Button";
 
@@ -46,6 +47,7 @@ function SpeakerIcon({ muted }: { muted: boolean }) {
 
 /** Mute switch for the turn and win sound effects. */
 export function SoundToggle() {
+  const t = useT();
   const soundOn = useGameStore((state) => state.soundOn);
   const toggleSound = useGameStore((state) => state.toggleSound);
 
@@ -56,8 +58,8 @@ export function SoundToggle() {
       className="shrink-0"
       role="switch"
       aria-checked={soundOn}
-      aria-label="Efek suara"
-      title={soundOn ? "Matikan efek suara" : "Nyalakan efek suara"}
+      aria-label={t("sound.aria")}
+      title={soundOn ? t("sound.mute") : t("sound.unmute")}
       onClick={toggleSound}
     >
       <SpeakerIcon muted={!soundOn} />

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ColorLegend } from "@/components/ui/ColorLegend";
 import { ControlBar } from "@/components/ui/ControlBar";
 import { HelpPanel } from "@/components/ui/HelpPanel";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { LiveRegion } from "@/components/ui/LiveRegion";
 import { MoveTracker } from "@/components/ui/MoveTracker";
 import { OrientationPanel } from "@/components/ui/OrientationPanel";
@@ -19,9 +20,11 @@ import { WinOverlay } from "@/components/ui/WinOverlay";
 import { useCubeSound } from "@/hooks/useCubeSound";
 import { usePrefersReducedMotion } from "@/hooks/useMediaQuery";
 import { useKeyboard } from "@/hooks/useKeyboard";
+import { useT } from "@/hooks/useT";
 import { useGameStore } from "@/store/game";
 
 export function GameShell() {
+  const t = useT();
   const [helpOpen, setHelpOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [introDone, setIntroDone] = useState(false);
@@ -95,20 +98,20 @@ export function GameShell() {
               Kubusin
             </h1>
             <p className="mt-1 max-w-md text-xs leading-relaxed text-ink-soft sm:text-sm">
-              Putar tiap sisi lewat keyboard atau sentuhan. Waktu mulai pada
-              langkah pertama dan berhenti saat kubus selesai.
+              {t("app.tagline")}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <SoundToggle />
             <ThemeToggle />
+            <LanguageToggle />
             <Button
               variant="outline"
               size="icon"
               className="shrink-0 font-semibold"
               onClick={() => setHelpOpen((open) => !open)}
               aria-expanded={helpOpen}
-              aria-label="Buka bantuan kontrol"
+              aria-label={t("shell.helpAria")}
             >
               <span aria-hidden="true">?</span>
             </Button>
@@ -116,7 +119,7 @@ export function GameShell() {
         </header>
 
         <section
-          aria-label="Papan kubus"
+          aria-label={t("shell.boardAria")}
           className="flex min-w-0 flex-col gap-4 lg:gap-5"
         >
           <div className="h-[min(56vh,420px)] sm:h-[min(64vh,520px)] lg:h-[min(74vh,660px)]">
@@ -131,8 +134,7 @@ export function GameShell() {
             }}
           />
           <p className="text-[11px] leading-relaxed text-ink-soft">
-            Seret kubus untuk memutar kamera, scroll atau cubit untuk zoom.
-            Buka panel bantuan untuk daftar lengkap tombol keyboard.
+            {t("shell.hint")}
           </p>
         </section>
 
@@ -144,7 +146,7 @@ export function GameShell() {
           <BestTimes />
           <section className="border-t border-line pt-4">
             <h2 className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-soft">
-              Huruf dan warna
+              {t("shell.lettersColors")}
             </h2>
             <ColorLegend className="mt-3" />
           </section>
@@ -158,7 +160,7 @@ export function GameShell() {
             href="https://github.com/gilangsuryaa/kubusin"
             target="_blank"
             rel="noreferrer"
-            aria-label="Kode sumber di GitHub"
+            aria-label={t("shell.githubAria")}
             className="inline-flex items-center rounded-[3px] p-1 text-ink-soft transition-colors hover:text-ink"
           >
             <GitHubMark />

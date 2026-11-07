@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/hooks/useT";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
 
@@ -14,6 +15,7 @@ interface ResetDialogProps {
  * so the dialog spells out what is lost and focuses the safe choice by default.
  */
 export function ResetDialog({ open, onCancel, onConfirm }: ResetDialogProps) {
+  const t = useT();
   return (
     <Dialog
       open={open}
@@ -24,11 +26,10 @@ export function ResetDialog({ open, onCancel, onConfirm }: ResetDialogProps) {
     >
       <div className="p-5 sm:p-6">
         <h2 id="reset-title" className="text-xl font-semibold tracking-tight">
-          Reset kubus?
+          {t("reset.title")}
         </h2>
         <p id="reset-desc" className="mt-2 text-xs leading-relaxed text-ink-soft">
-          Kubus kembali ke kondisi selesai. Langkah dan waktu saat ini hilang,
-          tetapi daftar rekor terbaik tetap tersimpan.
+          {t("reset.desc")}
         </p>
 
         <div className="mt-6 flex gap-2">
@@ -38,14 +39,14 @@ export function ResetDialog({ open, onCancel, onConfirm }: ResetDialogProps) {
             data-autofocus="true"
             className="flex-1"
           >
-            Batal
+            {t("common.cancel")}
           </Button>
           <Button
             variant="primary"
             onClick={onConfirm}
             className="flex-1"
           >
-            Ya, reset
+            {t("reset.confirm")}
           </Button>
         </div>
       </div>

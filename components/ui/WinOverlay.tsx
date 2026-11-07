@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/hooks/useT";
 import { formatTime } from "@/lib/format";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
@@ -27,6 +28,7 @@ export function WinOverlay({
   onPlayAgain,
   onClose,
 }: WinOverlayProps) {
+  const t = useT();
   return (
     <Dialog
       open={open}
@@ -36,16 +38,16 @@ export function WinOverlay({
     >
       <div className="p-5 sm:p-6">
         <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
-          Kubus selesai
+          {t("win.eyebrow")}
         </p>
         <h2 id="win-title" className="mt-2 text-2xl font-semibold tracking-tight">
-          {isNewBest ? "Rekor baru." : "Kubus kembali utuh."}
+          {isNewBest ? t("win.newBest") : t("win.solved")}
         </h2>
 
         <dl className="mt-5 grid grid-cols-2 gap-4 border-y border-line py-4">
           <div>
             <dt className="text-[11px] uppercase tracking-[0.18em] text-ink-soft">
-              Waktu
+              {t("common.time")}
             </dt>
             <dd className="tnum mt-1 text-2xl font-semibold tracking-tight">
               {formatTime(ms)}
@@ -53,7 +55,7 @@ export function WinOverlay({
           </div>
           <div>
             <dt className="text-[11px] uppercase tracking-[0.18em] text-ink-soft">
-              Langkah
+              {t("common.moves")}
             </dt>
             <dd className="tnum mt-1 text-2xl font-semibold tracking-tight">
               {moves}
@@ -63,12 +65,12 @@ export function WinOverlay({
 
         <p className="mt-3 text-xs text-ink-soft">
           {!recorded
-            ? "Mode panduan aktif, jadi waktu ini tidak masuk rekor."
+            ? t("win.notRecorded")
             : isNewBest
-              ? "Waktu ini tersimpan sebagai rekor terbaikmu."
+              ? t("win.recordedBest")
               : bestMs !== null
-                ? `Rekor terbaikmu ${formatTime(bestMs)}.`
-                : "Waktu ini masuk ke daftar rekormu."}
+                ? t("win.previousBest", { time: formatTime(bestMs) })
+                : t("win.addedToRecords")}
         </p>
 
         <div className="mt-6 flex gap-2">
@@ -78,10 +80,10 @@ export function WinOverlay({
             data-autofocus="true"
             className="flex-1"
           >
-            Main lagi
+            {t("win.playAgain")}
           </Button>
           <Button variant="outline" onClick={onClose}>
-            Tutup
+            {t("common.close")}
           </Button>
         </div>
       </div>

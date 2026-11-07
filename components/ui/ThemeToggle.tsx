@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useT } from "@/hooks/useT";
 import {
   applyThemeColor,
   useResolvedTheme,
@@ -50,10 +51,11 @@ function MoonIcon() {
  * system; the first press pins the opposite of whatever is showing.
  */
 export function ThemeToggle() {
+  const t = useT();
   const theme = useResolvedTheme();
   const toggle = useThemeToggle();
   const dark = theme === "dark";
-  const action = dark ? "Ganti ke tema terang" : "Ganti ke tema gelap";
+  const action = dark ? t("theme.switchToLight") : t("theme.switchToDark");
 
   // The stored choice can disagree with the system meta colour on first paint.
   useEffect(() => {
@@ -67,7 +69,7 @@ export function ThemeToggle() {
       className="shrink-0"
       role="switch"
       aria-checked={dark}
-      aria-label="Tema gelap"
+      aria-label={t("theme.darkAria")}
       title={action}
       onClick={toggle}
     >

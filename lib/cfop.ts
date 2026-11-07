@@ -31,6 +31,7 @@ import {
   type StageConfig,
   type StageSolver,
 } from "./stages";
+import type { MessageKey, Vars } from "./i18n";
 import {
   OLL_CORNERS,
   WHITE_CROSS,
@@ -197,48 +198,50 @@ const PLL_EDGES = makeStageSolver(EPLL_STAGE);
 
 interface CfopStage {
   readonly id: string;
-  readonly title: string;
-  readonly detail: string;
+  readonly title: MessageKey;
+  readonly detail: MessageKey;
+  readonly vars?: Vars;
   readonly solve: (state: CubeState) => Move[];
 }
 
 function stageDefinitions(): readonly CfopStage[] {
   const f2l: CfopStage[] = F2L_SLOTS.map((_, index) => ({
     id: `f2l-${index + 1}`,
-    title: `F2L pasangan ${index + 1}`,
-    detail: `Satukan sudut dan tepi pasangan ${index + 1} lalu masukkan ke lapisan tengah.`,
+    title: "guide.stage.c.f2l.title",
+    detail: "guide.stage.c.f2l.detail",
+    vars: { n: index + 1 },
     solve: f2lSolver(index),
   }));
   return [
     {
       id: "cross",
-      title: "Cross",
-      detail: "Susun cross kuning di sisi bawah, langsung dengan warna sisinya.",
+      title: "guide.stage.c.cross.title",
+      detail: "guide.stage.c.cross.detail",
       solve: solveCross,
     },
     ...f2l,
     {
       id: "eoll",
-      title: "OLL tepi (cross putih)",
-      detail: "Balik tepi atas sampai membentuk palang putih.",
+      title: "guide.stage.c.eoll.title",
+      detail: "guide.stage.c.eoll.detail",
       solve: WHITE_CROSS,
     },
     {
       id: "ocll",
-      title: "OLL sudut",
-      detail: "Putar sudut atas sampai seluruh sisi atas putih.",
+      title: "guide.stage.c.ocll.title",
+      detail: "guide.stage.c.ocll.detail",
       solve: OLL_CORNERS,
     },
     {
       id: "cpll",
-      title: "PLL sudut",
-      detail: "Pindahkan sudut atas ke posisi akhirnya.",
+      title: "guide.stage.c.cpll.title",
+      detail: "guide.stage.c.cpll.detail",
       solve: PLL_CORNERS,
     },
     {
       id: "epll",
-      title: "PLL tepi",
-      detail: "Putar tepi atas sampai kubus selesai.",
+      title: "guide.stage.c.epll.title",
+      detail: "guide.stage.c.epll.detail",
       solve: PLL_EDGES,
     },
   ];
@@ -255,6 +258,7 @@ export function solveCfop(state: CubeState): SolveStage[] {
       id: stage.id,
       title: stage.title,
       detail: stage.detail,
+      ...(stage.vars ? { vars: stage.vars } : {}),
       moves,
     });
   }

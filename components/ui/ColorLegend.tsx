@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/hooks/useT";
 import { orientationFaceMap, type Face } from "@/lib/cube";
 import {
   FACE_COLORS,
@@ -15,6 +16,7 @@ const ORDER: Face[] = ["U", "D", "F", "B", "R", "L"];
  * physical colour that now sits on it. Changing the orientation updates this.
  */
 export function ColorLegend({ className = "" }: { className?: string }) {
+  const t = useT();
   const orientation = useGameStore((state) => state.orientation);
   const map = orientationFaceMap(orientation.front, orientation.up);
 
@@ -30,8 +32,8 @@ export function ColorLegend({ className = "" }: { className?: string }) {
               style={{ backgroundColor: FACE_COLORS[physical] }}
             />
             <span className="text-ink">{face}</span>
-            <span>{FACE_COLOR_LABELS[face]}</span>
-            <span className="sr-only">{FACE_COLOR_NAMES[physical]}</span>
+            <span>{t(FACE_COLOR_LABELS[face])}</span>
+            <span className="sr-only">{t(FACE_COLOR_NAMES[physical])}</span>
           </li>
         );
       })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/hooks/useT";
 import { moveToString, type Move } from "@/lib/cube";
 import { useGameStore } from "@/store/game";
 import { Button } from "./Button";
@@ -26,6 +27,7 @@ function Sequence({ moves, label }: { moves: readonly Move[]; label: string }) {
  * is raw: an undone turn is recorded as the inverse turn it really was.
  */
 export function MoveTracker() {
+  const t = useT();
   const scramble = useGameStore((state) => state.scramble);
   const history = useGameStore((state) => state.history);
   const [copied, setCopied] = useState(false);
@@ -35,10 +37,10 @@ export function MoveTracker() {
   async function copyLog() {
     const lines = [
       scramble.length > 0
-        ? `Acakan: ${scramble.map(moveToString).join(" ")}`
+        ? t("tracker.clipScramble", { moves: scramble.map(moveToString).join(" ") })
         : null,
       history.length > 0
-        ? `Langkah: ${history.map(moveToString).join(" ")}`
+        ? t("tracker.clipMoves", { moves: history.map(moveToString).join(" ") })
         : null,
     ].filter((line): line is string => line !== null);
     try {
@@ -60,48 +62,49 @@ export function MoveTracker() {
           id="tracker-title"
           className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-soft"
         >
-          Pencatat gerakan
+          {t("tracker.title")}
         </h2>
         {empty ? null : (
           <Button variant="bare" size="sm" onClick={copyLog}>
-            {copied ? "Tersalin" : "Salin"}
+            {copied ? t("common.copied") : t("common.copy")}
           </Button>
         )}
       </div>
 
       {empty ? (
         <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
-          Catatan langkah muncul di sini. Tekan Spasi untuk mengacak, lalu putar
-          sisi mana saja.
+          {t("tracker.empty")}
         </p>
       ) : (
         <div className="mt-2 space-y-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           {scramble.length > 0 ? (
             <div>
               <div className="flex items-baseline justify-between gap-2">
-                <h3 className="text-[11px] font-medium text-ink-soft">Acakan</h3>
+                <h3 className="text-[11px] font-medium text-ink-soft">
+                  {t("tracker.scramble")}
+                </h3>
                 <span className="text-[10px] text-ink-soft">
-                  {scramble.length} langkah
+                  {t("common.movesCount", { count: scramble.length })}
                 </span>
               </div>
-              <Sequence moves={scramble} label="Langkah acakan" />
+              <Sequence moves={scramble} label={t("tracker.scrambleAria")} />
             </div>
           ) : null}
 
           <div>
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="text-[11px] font-medium text-ink-soft">
-                Langkahmu
+                {t("tracker.yourMoves")}
               </h3>
               <span className="text-[10px] text-ink-soft">
-                {history.length} langkah
+                {t("common.movesCount", { count: history.length })}
               </span>
             </div>
             {history.length > 0 ? (
-              <Sequence moves={history} label="Langkah yang kamu lakukan" />
+              <Sequence moves={history} label={t("tracker.yourMovesAria")} />
             ) : (
               <p className="mt-1.5 text-[11px] text-ink-soft">
-                Belum ada langkah.
+                {t("tracker.noMoves")}
               </p>
             )}
           </div>

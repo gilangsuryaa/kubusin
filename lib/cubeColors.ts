@@ -1,4 +1,5 @@
 import type { Face } from "./cube";
+import type { MessageKey } from "./i18n";
 
 /**
  * Standard Western colour scheme: white up, yellow down, green front, blue
@@ -14,23 +15,23 @@ export const FACE_COLORS: Record<Face, string> = {
 };
 
 /** Small swatch colours for the legend, tuned to read on both themes. */
-export const FACE_COLOR_LABELS: Record<Face, string> = {
-  U: "Atas",
-  D: "Bawah",
-  F: "Depan",
-  B: "Belakang",
-  R: "Kanan",
-  L: "Kiri",
+export const FACE_COLOR_LABELS: Record<Face, MessageKey> = {
+  U: "face.label.U",
+  D: "face.label.D",
+  F: "face.label.F",
+  B: "face.label.B",
+  R: "face.label.R",
+  L: "face.label.L",
 };
 
 /** Human colour names, used by the orientation picker. */
-export const FACE_COLOR_NAMES: Record<Face, string> = {
-  U: "Putih",
-  D: "Kuning",
-  F: "Hijau",
-  B: "Biru",
-  R: "Merah",
-  L: "Oranye",
+export const FACE_COLOR_NAMES: Record<Face, MessageKey> = {
+  U: "face.name.U",
+  D: "face.name.D",
+  F: "face.name.F",
+  B: "face.name.B",
+  R: "face.name.R",
+  L: "face.name.L",
 };
 
 /** Text colour that stays legible on top of each sticker colour. */
