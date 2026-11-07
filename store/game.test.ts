@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createSolvedCube, DEFAULT_ORIENTATION } from "@/lib/cube";
+import {
+  applyMoves,
+  createSolvedCube,
+  DEFAULT_ORIENTATION,
+  parseMoves,
+} from "@/lib/cube";
 import { useGameStore } from "./game";
 
 function resetStore(): void {
@@ -8,12 +13,14 @@ function resetStore(): void {
     queue: [],
     active: null,
     moves: [],
+    log: [],
     scramble: [],
     history: [],
     status: "idle",
     startedAt: null,
     finalMs: null,
     bestTimes: [],
+    replayingId: null,
     hydrated: true,
     scrambleId: 0,
     orientation: DEFAULT_ORIENTATION,
@@ -285,5 +292,114 @@ describe("sound preference", () => {
     expect(useGameStore.getState().soundOn).toBe(false);
     useGameStore.getState().toggleSound();
     expect(useGameStore.getState().soundOn).toBe(true);
+  });
+});
+
+describe("record replay", () => {
+  beforeEach(resetStore);
+
+  /** Plays a scripted run to solved and returns the saved record's id. */
+  function recordRun(scramble: string, solution: string): string {
+    // Writes the shuffle up front; the "turns" that follow undo it. A four-turn
+    // run avoids the one-turn cancellation that is not a win.
+    const moves = parseMoves(scramble);
+    useGameStore.setState({
+      runScrambled: true,
+      cubies: applyMoves(createSolvedCube(), moves),
+      scramble: moves,
+    });
+    for (const move of parseMoves(solution)) {
+      useGameStore.getState().requestMove(move.face, move.turns, move.wide);
+      useGameStore.getState().commitActive();
+    }
+    const state = useGameStore.getState();
+    expect(state.status).toBe("solved");
+    expect(state.bestTimes).toHaveLength(1);
+    return state.bestTimes[0].id;
+  }
+
+  it("saves the scramble and the player's turns with the time", () => {
+    const id = recordRun("R U F' L", "L' F U' R'");
+    const entry = useGameStore.getState().bestTimes[0];
+    expect(entry.id).toBe(id);
+    expect(entry.scramble).toBe("R U F' L");
+    expect(entry.solution).toBe("l' f u' r'");
+    expect(entry.moves).toBe(4);
+  });
+
+  it("logs face turns in the player's hold, not the physical face", () => {
+    // Yellow front, orange up: the player's R is the physical F face.
+    useGameStore.getState().setOrientation("D", "L");
+    useGameStore.setState({ runScrambled: true });
+    const { requestMove, commitActive } = useGameStore.getState();
+    requestMove("R", 1);
+    commitActive();
+    // Undo through the scramble: the recorded solution is the inverse turns,
+    // and each face turn is logged as the player named it.
+    expect(useGameStore.getState().moves).toEqual([{ face: "F", turns: 1 }]);
+    expect(useGameStore.getState().log).toEqual([
+      { face: "R", turns: 1, logical: true },
+    ]);
+  });
+
+  it("replays the scramble and solution on the board", () => {
+    const id = recordRun("R U F' L", "L' F U' R'");
+    useGameStore.getState().requestReset();
+    useGameStore.getState().replayRecord(id);
+
+    const state = useGameStore.getState();
+    // The first scramble turn is already the active one, so the queue holds the
+    // remaining three scramble turns plus the four player turns.
+    expect(state.replayingId).toBe(id);
+    expect(state.status).toBe("scrambling");
+    expect(state.queue).toHaveLength(7);
+    expect(state.active?.source).toBe("scramble");
+    expect(state.queue.slice(0, 3).map((entry) => entry.source)).toEqual([
+      "scramble",
+      "scramble",
+      "scramble",
+    ]);
+    expect(state.queue.slice(3).map((entry) => entry.source)).toEqual([
+      "user",
+      "user",
+      "user",
+      "user",
+    ]);
+  });
+
+  it("plays a replayed solution back to solved", () => {
+    const id = recordRun("R U F' L", "L' F U' R'");
+    useGameStore.getState().requestReset();
+    useGameStore.getState().replayRecord(id);
+    for (let i = 0; i < 8; i += 1) useGameStore.getState().commitActive();
+    expect(useGameStore.getState().status).toBe("solved");
+  });
+
+  it("drops the replay flag once the player turns the cube", () => {
+    const id = recordRun("R U F' L", "L' F U' R'");
+    useGameStore.getState().replayRecord(id);
+    useGameStore.getState().requestMove("U", 1);
+    expect(useGameStore.getState().replayingId).toBeNull();
+  });
+
+  it("ignores unknown or pre-upgrade records", () => {
+    useGameStore.setState({
+      bestTimes: [
+        {
+          id: "legacy",
+          ms: 1234,
+          moves: 10,
+          at: 0,
+          scramble: "",
+          solution: "",
+        },
+      ],
+    });
+    useGameStore.getState().replayRecord("legacy");
+    useGameStore.getState().replayRecord("missing");
+    const state = useGameStore.getState();
+    expect(state.replayingId).toBeNull();
+    expect(state.queue).toHaveLength(0);
+    expect(state.status).toBe("idle");
   });
 });

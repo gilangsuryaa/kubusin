@@ -50,12 +50,21 @@ const id = {
   "tracker.noMoves": "Belum ada langkah.",
   "tracker.clipScramble": "Acakan: {moves}",
   "tracker.clipMoves": "Langkah: {moves}",
+  "tracker.replaying":
+    "Rekor ini sedang diputar ulang: acakan dan langkah tersimpan dimainkan lagi di papan.",
+  "tracker.savedMoves": "Langkah tersimpan",
+  "tracker.savedMovesAria": "Langkah tersimpan dari rekor ini",
 
   // Best times.
   "best.aria": "Waktu terbaik",
   "best.title": "Rekor terbaik",
   "best.empty":
     "Belum ada catatan. Tekan Spasi untuk mengacak, lalu selesaikan kubus.",
+  "best.replay": "Putar ulang",
+  "best.replayAria": "Putar ulang rekor {time} dengan {count} langkah",
+  "best.replayTitle":
+    "Acakan dan langkah rekor ini diputar ulang di papan, dengan waktu baru",
+  "best.replayUnavailable": "Langkah rekor ini tidak tersimpan",
 
   // Live region (screen reader).
   "live.solved": "Kubus selesai. Waktu {time} dengan {count} langkah.",
@@ -312,10 +321,19 @@ const en: Record<MessageKey, string> = {
   "tracker.noMoves": "No moves yet.",
   "tracker.clipScramble": "Scramble: {moves}",
   "tracker.clipMoves": "Moves: {moves}",
+  "tracker.replaying":
+    "Replaying this record: its saved scramble and moves are being played again on the board.",
+  "tracker.savedMoves": "Saved moves",
+  "tracker.savedMovesAria": "The moves saved with this record",
 
   "best.aria": "Best times",
   "best.title": "Best records",
   "best.empty": "No records yet. Press Space to scramble, then solve the cube.",
+  "best.replay": "Replay",
+  "best.replayAria": "Replay the {time} record with {count} moves",
+  "best.replayTitle":
+    "Replays this record's scramble and moves on the board with a fresh timer",
+  "best.replayUnavailable": "This record's moves were not saved",
 
   "live.solved": "Cube solved. Time {time} with {count} moves.",
   "live.scrambling": "Scrambling the cube.",

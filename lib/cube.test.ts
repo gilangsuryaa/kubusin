@@ -575,4 +575,17 @@ describe("wide moves", () => {
     ]);
     expect(parseMoves("M'")).toEqual([{ face: "M", turns: -1 }]);
   });
+
+  it("round-trips the player's own letters through lower case", () => {
+    expect(moveToString({ face: "R", turns: 1, logical: true })).toBe("r");
+    expect(moveToString({ face: "U", turns: -1, logical: true })).toBe("u'");
+    expect(moveToString({ face: "F", turns: 1 })).toBe("F");
+    expect(parseMoves("r u' f")).toEqual([
+      { face: "R", turns: 1, logical: true },
+      { face: "U", turns: -1, logical: true },
+      { face: "F", turns: 1, logical: true },
+    ]);
+    // A slice never carries the player's hold, so it is never logical.
+    expect(parseMoves("m")).toEqual([{ face: "M", turns: 1 }]);
+  });
 });

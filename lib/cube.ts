@@ -36,6 +36,12 @@ export interface Move {
    * affected, just like a normal face turn.
    */
   readonly wide?: boolean;
+  /**
+   * Face named by the player's hold rather than by the physical cube. Set on
+   * logged player turns so a saved record still means the same turn when it is
+   * replayed under a different orientation (`requestMove` resolves it again).
+   */
+  readonly logical?: boolean;
 }
 
 export interface Cubie {
@@ -452,19 +458,26 @@ export function isIdentity(state: CubeState): boolean {
 
 export function moveToString(move: Move): string {
   const wide = isWide(move) ? "w" : "";
-  return `${move.face}${wide}${move.turns === -1 ? "'" : ""}`;
+  const face = move.logical ? move.face.toLowerCase() : move.face;
+  return `${face}${wide}${move.turns === -1 ? "'" : ""}`;
 }
 
 export function parseMoves(input: string): Move[] {
   const tokens = input.trim().length === 0 ? [] : input.trim().split(/\s+/);
   return tokens.map((token) => {
-    const name = token[0] as MoveName;
+    // A lower-case face letter means "as the player named it", which only
+    // matters for a replay under a non-standard hold. Slices stay upper case.
+    const raw = token[0];
+    const upper = raw.toUpperCase();
+    const logical = raw !== upper;
+    const name = upper as MoveName;
     if (!isSlice(name) && !FACES.includes(name)) {
       throw new Error(`Unknown face: ${token}`);
     }
     const turns: Turns = token.includes("'") ? -1 : 1;
     const wide = !isSlice(name) && /w/i.test(token);
-    return wide ? { face: name, turns, wide: true } : { face: name, turns };
+    const move: Move = wide ? { face: name, turns, wide: true } : { face: name, turns };
+    return logical && !isSlice(name) ? { ...move, logical: true } : move;
   });
 }
 

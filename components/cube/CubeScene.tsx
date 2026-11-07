@@ -106,6 +106,7 @@ function CubeContent({ onIntroComplete }: CubeContentProps) {
   const orientation = useGameStore((state) => state.orientation);
   const reducedMotion = usePrefersReducedMotion();
   const dark = useResolvedTheme() === "dark";
+  const replaying = useGameStore((state) => state.replayingId !== null);
   const environment = useStudioEnvironment();
   const invalidate = useThree((state) => state.invalidate);
 
@@ -115,7 +116,7 @@ function CubeContent({ onIntroComplete }: CubeContentProps) {
   }, [dark, invalidate]);
 
   const durationMs = active
-    ? moveDuration(active.source, reducedMotion)
+    ? moveDuration(active.source, reducedMotion, replaying)
     : MOVE_DURATION_MS;
 
   return (

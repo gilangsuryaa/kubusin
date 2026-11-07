@@ -9,6 +9,8 @@ import {
   isIdentity,
   isSlice,
   isSolved,
+  moveToString,
+  parseMoves,
   physicalMove,
   rotateOrientation,
   type Axis,
@@ -25,6 +27,7 @@ import {
   writeStoredLocale,
   type Locale,
 } from "@/lib/i18n";
+import { REPLAY_DURATION_MS } from "./timing";
 
 export type GameStatus = "idle" | "scrambling" | "ready" | "running" | "solved";
 /** Where a queued turn came from; only `user` turns start the timer and count. */
@@ -35,6 +38,8 @@ export type GuideMethod = "beginner" | "cfop" | "optimal";
 export interface QueuedMove {
   readonly move: Move;
   readonly source: MoveSource;
+  /** The turn as the player asked for it; set on face turns only. */
+  readonly label?: Move;
 }
 
 export interface BestTime {
@@ -42,6 +47,10 @@ export interface BestTime {
   readonly ms: number;
   readonly moves: number;
   readonly at: number;
+  /** The scramble the run started from, in notation, so it can be replayed. */
+  readonly scramble: string;
+  /** The player's turns in notation, as the player named them. */
+  readonly solution: string;
 }
 
 export const BEST_TIMES_KEY = "kubusin.best-times.v1";
@@ -57,8 +66,15 @@ export const SCRAMBLE_DURATION_MS = 75;
 /** Layer turn length when the user prefers reduced motion. */
 export const MOVE_DURATION_REDUCED_MS = 60;
 
-export function moveDuration(source: MoveSource, reducedMotion: boolean): number {
+export function moveDuration(
+  source: MoveSource,
+  reducedMotion: boolean,
+  replaying = false,
+): number {
   if (reducedMotion) return MOVE_DURATION_REDUCED_MS;
+  // A replay runs the whole saved solve back to back, so it gets a quicker,
+  // uniform pace instead of the scramble-then-play timing.
+  if (replaying) return REPLAY_DURATION_MS;
   return source === "scramble" ? SCRAMBLE_DURATION_MS : MOVE_DURATION_MS;
 }
 
@@ -69,6 +85,11 @@ interface GameStore {
   active: QueuedMove | null;
   /** User moves already started, oldest first. Drives undo and the counter. */
   moves: Move[];
+  /**
+   * The same turns as `moves`, but always named in the player's hold instead of
+   * the physical face, so a saved solution replays correctly on any hold.
+   */
+  log: Move[];
   /** The shuffle in notation, kept for the move tracker. */
   scramble: Move[];
   /**
@@ -82,6 +103,8 @@ interface GameStore {
   /** Final time in ms once solved. */
   finalMs: number | null;
   bestTimes: BestTime[];
+  /** The record whose solution the tracker is showing, if any. */
+  replayingId: string | null;
   hydrated: boolean;
   /** Bumped on every scramble so the 3D layer can react if needed. */
   scrambleId: number;
@@ -122,6 +145,8 @@ interface GameStore {
   requestReset: () => void;
   /** Called by the 3D layer once the active turn finished animating. */
   commitActive: () => void;
+  /** Replay a saved record: scramble, solution, and a fresh timed run. */
+  replayRecord: (id: string) => void;
   hydrate: () => void;
 }
 
@@ -131,6 +156,7 @@ interface SchedulerState {
   startedAt: number | null;
   status: GameStatus;
   moves: Move[];
+  log: Move[];
 }
 
 interface SchedulerPatch {
@@ -139,6 +165,7 @@ interface SchedulerPatch {
   startedAt?: number;
   status?: GameStatus;
   moves?: Move[];
+  log?: Move[];
 }
 
 /**
@@ -151,6 +178,7 @@ function pullNext(state: SchedulerState): SchedulerPatch | null {
   const patch: SchedulerPatch = { active: next, queue: rest };
   if (next.source === "user") {
     patch.moves = [...state.moves, next.move];
+    patch.log = [...state.log, next.label ?? next.move];
     if (state.startedAt === null) {
       patch.startedAt = Date.now();
       patch.status = "running";
@@ -176,6 +204,13 @@ function readBestTimes(): BestTime[] {
           typeof (entry as BestTime).at === "number" &&
           typeof (entry as BestTime).id === "string",
       )
+      // Records saved before the replay fields existed stay valid; only the
+      // replay itself is missing.
+      .map((entry) => ({
+        ...entry,
+        scramble: typeof entry.scramble === "string" ? entry.scramble : "",
+        solution: typeof entry.solution === "string" ? entry.solution : "",
+      }))
       .sort((a, b) => a.ms - b.ms)
       .slice(0, BEST_TIMES_LIMIT);
   } catch {
@@ -239,12 +274,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   queue: [],
   active: null,
   moves: [],
+  log: [],
   scramble: [],
   history: [],
   status: "idle",
   startedAt: null,
   finalMs: null,
   bestTimes: [],
+  replayingId: null,
   hydrated: false,
   scrambleId: 0,
   orientation: DEFAULT_ORIENTATION,
@@ -255,10 +292,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   locale: "id",
 
   requestMove(name, turns, wide = false) {
-    const { status, active, orientation } = get();
-    // Input is ignored while the shuffle plays; everything else falls through
-    // so rapid key presses only ever queue up.
-    if (status === "scrambling" || status === "solved") return;
+    const { status, active, orientation, replayingId } = get();
+    // Input is ignored while a shuffle plays, but not during a replay: taking
+    // over mid-replay is the clearest way to say "I want to play again".
+    if (status === "scrambling" && replayingId === null) return;
+    if (status === "solved") return;
     // Letters are relative to the player's hold; queue the physical turn so
     // changing the hold later cannot rewrite an already queued turn. Wide only
     // applies to face turns, so slices ignore the flag.
@@ -267,9 +305,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ? { face: name, turns, wide: true }
         : { face: name, turns };
     const move = physicalMove(requested, orientation);
-    set((state) => ({
-      queue: [...state.queue, { move, source: "user" as const }],
-    }));
+    set((state) => {
+      const next: QueuedMove = {
+        move,
+        // The player's own letter, kept so `log` and a saved record stay the
+        // same under any hold. Slices are hold-independent, so they need none.
+        label: isSlice(name)
+          ? undefined
+          : { face: name, turns, logical: true, ...(wide ? { wide: true } : {}) },
+        source: "user",
+      };
+      const patch: Partial<GameStore> = {
+        queue: [...state.queue, next],
+        replayingId: null,
+      };
+      // Taking over from a replay: the board is mid-scramble, so drop the rest
+      // of the replay and let the player carry on from where the cube stands.
+      if (state.replayingId !== null) {
+        const queued = state.queue
+          .filter((entry) => entry.source === "scramble")
+          .map((entry) => ({ ...entry, source: "scramble" as MoveSource }));
+        patch.queue = [...queued, next];
+        patch.status = "running";
+        patch.scramble = [...state.scramble, ...queued.map((entry) => entry.move)];
+      }
+      return patch;
+    });
     if (!active) set((state) => pullNext(state) ?? {});
   },
 
@@ -321,11 +382,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       queue: moves.map((move) => ({ move, source: "scramble" as const })),
       active: null,
       moves: [],
+      log: [],
       scramble: moves,
       history: [],
       status: "scrambling",
       startedAt: null,
       finalMs: null,
+      replayingId: null,
       scrambleId: state.scrambleId + 1,
       runScrambled: true,
     }));
@@ -351,6 +414,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const lastMove = state.moves[state.moves.length - 1];
     set((prev) => ({
       moves: prev.moves.slice(0, -1),
+      log: prev.log.slice(0, -1),
       queue: [...prev.queue, { move: invertMove(lastMove), source: "undo" as const }],
     }));
     if (!state.active) set((prev) => pullNext(prev) ?? {});
@@ -362,11 +426,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       queue: [],
       active: null,
       moves: [],
+      log: [],
       scramble: [],
       history: [],
       status: "idle",
       startedAt: null,
       finalMs: null,
+      replayingId: null,
       runScrambled: false,
     });
   },
@@ -435,11 +501,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     if (solvedNow && finalMs !== null && !state.assist) {
       const now = Date.now();
+      const finished = get();
       const entry: BestTime = {
         id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
         ms: finalMs,
-        moves: get().moves.length,
+        moves: finished.moves.length,
         at: now,
+        scramble: finished.scramble.map(moveToString).join(" "),
+        solution: finished.log.map(moveToString).join(" "),
       };
       const bestTimes = [...get().bestTimes, entry]
         .sort((a, b) => a.ms - b.ms)
@@ -455,6 +524,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
     if (get().status === "scrambling") set({ status: "ready" });
+  },
+
+  /** Replay a saved record: same scramble, same turns, fresh timed run. */
+  replayRecord(id) {
+    const state = get();
+    const entry = state.bestTimes.find((candidate) => candidate.id === id);
+    if (!entry || entry.scramble.length === 0 || entry.solution.length === 0) return;
+
+    let scramble: Move[];
+    let solution: Move[];
+    try {
+      scramble = parseMoves(entry.scramble);
+      solution = parseMoves(entry.solution);
+    } catch {
+      // A malformed log must never wedge the board; keep the current run.
+      return;
+    }
+
+    set({
+      cubies: createSolvedCube(),
+      queue: [
+        ...scramble.map((move) => ({ move, source: "scramble" as const })),
+        ...solution.map((move) => ({ move, source: "user" as const })),
+      ],
+      active: null,
+      moves: [],
+      log: [],
+      scramble,
+      history: [],
+      status: "scrambling",
+      startedAt: null,
+      finalMs: null,
+      replayingId: entry.id,
+      scrambleId: state.scrambleId + 1,
+      runScrambled: true,
+      orientation: DEFAULT_ORIENTATION,
+    });
+    set((current) => pullNext(current) ?? {});
   },
 
   hydrate() {
