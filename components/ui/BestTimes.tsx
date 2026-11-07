@@ -75,7 +75,7 @@ export function BestTimes() {
                 aria-pressed={sort === mode}
                 className={`rounded-[3px] px-1.5 py-0.5 transition-colors ${
                   sort === mode
-                    ? "bg-ink text-paper"
+                    ? "bg-ink text-bg"
                     : "text-ink-soft hover:text-ink"
                 }`}
               >
