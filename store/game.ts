@@ -9,7 +9,10 @@ import {
   isIdentity,
   isSlice,
   isSolved,
+  logMoveToString,
   moveToString,
+  orientationPath,
+  parseLogMoves,
   parseMoves,
   physicalMove,
   rotateOrientation,
@@ -17,6 +20,7 @@ import {
   type CubeOrientation,
   type CubeState,
   type Face,
+  type LogMove,
   type Move,
   type MoveName,
   type Turns,
@@ -38,8 +42,15 @@ export type GuideMethod = "beginner" | "cfop" | "optimal";
 export interface QueuedMove {
   readonly move: Move;
   readonly source: MoveSource;
-  /** The turn as the player asked for it; set on face turns only. */
+  /** The turn as the player asked for it; set on every player turn. */
   readonly label?: Move;
+  /**
+   * Whole-cube rotations that happened just before this turn in a replay; they
+   * are logged again when the turn starts so a re-saved record keeps them.
+   */
+  readonly rotations?: readonly LogMove[];
+  /** The hold to adopt when this turn starts; set on replay turns only. */
+  readonly hold?: CubeOrientation;
 }
 
 export interface BestTime {
@@ -86,10 +97,11 @@ interface GameStore {
   /** User moves already started, oldest first. Drives undo and the counter. */
   moves: Move[];
   /**
-   * The same turns as `moves`, but always named in the player's hold instead of
-   * the physical face, so a saved solution replays correctly on any hold.
+   * Everything the player did that changes the board or the view, in order:
+   * whole-cube rotations and the turns they made. Stored in one log so a saved
+   * solution can be replayed exactly, including the hold it was played under.
    */
-  log: Move[];
+  log: LogMove[];
   /** The shuffle in notation, kept for the move tracker. */
   scramble: Move[];
   /**
@@ -156,7 +168,7 @@ interface SchedulerState {
   startedAt: number | null;
   status: GameStatus;
   moves: Move[];
-  log: Move[];
+  log: LogMove[];
 }
 
 interface SchedulerPatch {
@@ -165,7 +177,8 @@ interface SchedulerPatch {
   startedAt?: number;
   status?: GameStatus;
   moves?: Move[];
-  log?: Move[];
+  log?: LogMove[];
+  orientation?: CubeOrientation;
 }
 
 /**
@@ -176,9 +189,18 @@ function pullNext(state: SchedulerState): SchedulerPatch | null {
   if (state.active || state.queue.length === 0) return null;
   const [next, ...rest] = state.queue;
   const patch: SchedulerPatch = { active: next, queue: rest };
+  // A replay turn restores the hold it was played under, then logs the
+  // rotations that produced that hold so a re-saved record keeps them.
+  if (next.hold) patch.orientation = next.hold;
+  if (next.rotations && next.rotations.length > 0) {
+    patch.log = [...state.log, ...next.rotations];
+  }
   if (next.source === "user") {
     patch.moves = [...state.moves, next.move];
-    patch.log = [...state.log, next.label ?? next.move];
+    patch.log = [
+      ...(patch.log ?? state.log),
+      { kind: "turn", move: next.label ?? next.move },
+    ];
     if (state.startedAt === null) {
       patch.startedAt = Date.now();
       patch.status = "running";
@@ -309,10 +331,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const next: QueuedMove = {
         move,
         // The player's own letter, kept so `log` and a saved record stay the
-        // same under any hold. Slices are hold-independent, so they need none.
-        label: isSlice(name)
-          ? undefined
-          : { face: name, turns, logical: true, ...(wide ? { wide: true } : {}) },
+        // same under any hold.
+        label: { face: name, turns, logical: true, ...(wide ? { wide: true } : {}) },
         source: "user",
       };
       const patch: Partial<GameStore> = {
@@ -339,16 +359,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (get().assist) return;
     // Reject opposite faces; the UI only offers perpendicular choices.
     if (!areAdjacentFaces(front, up)) return;
-    set({ orientation: { front, up } });
+    const state = get();
+    // Whole-cube rotations that reach this hold, so the tracker and any saved
+    // record keep the view change alongside the turns around it.
+    const rotations = orientationPath(state.orientation, { front, up }).map(
+      (rotation): LogMove => ({ kind: "rotate", ...rotation }),
+    );
+    set({
+      orientation: { front, up },
+      log: [...state.log, ...rotations],
+      replayingId: null,
+    });
   },
 
   rotateCube(axis, turns) {
     const state = get();
     // The shuffle owns the cube while it plays; do not fight it.
-    if (state.status === "scrambling") return;
+    if (state.status === "scrambling" && state.replayingId === null) return;
     // The guide pins the hold, so whole-cube rotations are ignored.
     if (state.assist) return;
-    set({ orientation: rotateOrientation(state.orientation, axis, turns) });
+    const entry: LogMove = { kind: "rotate", axis, turns };
+    set({
+      orientation: rotateOrientation(state.orientation, axis, turns),
+      // Rotating changes which face a letter means, so a saved solution needs
+      // the rotation in the log to be replayed under the same hold.
+      log: [...state.log, entry],
+      replayingId: null,
+    });
   },
 
   setAssist(enabled) {
@@ -412,9 +449,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     if (state.moves.length === 0) return;
     const lastMove = state.moves[state.moves.length - 1];
+    // Drop the turn's log entry; any rotations before it stay, since the hold
+    // they produced is still what the board shows.
+    const lastTurn = state.log.map((entry) => entry.kind).lastIndexOf("turn");
+    const log = lastTurn < 0 ? state.log : [...state.log.slice(0, lastTurn), ...state.log.slice(lastTurn + 1)];
     set((prev) => ({
       moves: prev.moves.slice(0, -1),
-      log: prev.log.slice(0, -1),
+      log,
       queue: [...prev.queue, { move: invertMove(lastMove), source: "undo" as const }],
     }));
     if (!state.active) set((prev) => pullNext(prev) ?? {});
@@ -508,7 +549,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         moves: finished.moves.length,
         at: now,
         scramble: finished.scramble.map(moveToString).join(" "),
-        solution: finished.log.map(moveToString).join(" "),
+        solution: finished.log.map(logMoveToString).join(" "),
       };
       const bestTimes = [...get().bestTimes, entry]
         .sort((a, b) => a.ms - b.ms)
@@ -533,21 +574,47 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!entry || entry.scramble.length === 0 || entry.solution.length === 0) return;
 
     let scramble: Move[];
-    let solution: Move[];
+    let solution: LogMove[];
     try {
       scramble = parseMoves(entry.scramble);
-      solution = parseMoves(entry.solution);
+      solution = parseLogMoves(entry.solution);
     } catch {
       // A malformed log must never wedge the board; keep the current run.
       return;
     }
 
+    // Walk the saved log from the standard hold. Rotations move the hold first,
+    // then each turn is resolved with that hold, which is exactly how it was
+    // played. The result is a queue of turns plus the view changes between them.
+    const queue: QueuedMove[] = scramble.map((move) => ({
+      move,
+      source: "scramble" as const,
+    }));
+    let hold: CubeOrientation = DEFAULT_ORIENTATION;
+    let rotations: LogMove[] = [];
+    for (const item of solution) {
+      if (item.kind === "rotate") {
+        hold = rotateOrientation(hold, item.axis, item.turns);
+        rotations = [...rotations, item];
+        continue;
+      }
+      const turn = item.move;
+      const requested: Move = turn.logical
+        ? { face: turn.face, turns: turn.turns, ...(turn.wide ? { wide: true } : {}) }
+        : turn;
+      queue.push({
+        move: physicalMove(requested, hold),
+        source: "user",
+        label: turn.logical ? requested : undefined,
+        rotations,
+        hold,
+      });
+      rotations = [];
+    }
+
     set({
       cubies: createSolvedCube(),
-      queue: [
-        ...scramble.map((move) => ({ move, source: "scramble" as const })),
-        ...solution.map((move) => ({ move, source: "user" as const })),
-      ],
+      queue,
       active: null,
       moves: [],
       log: [],
@@ -561,7 +628,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       runScrambled: true,
       orientation: DEFAULT_ORIENTATION,
     });
-    set((current) => pullNext(current) ?? {});
+    // A replayed run is already a finished record; it must not be saved again.
+    set((current) => ({ ...(pullNext(current) ?? {}), assist: true }));
   },
 
   hydrate() {

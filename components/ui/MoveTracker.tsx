@@ -2,36 +2,30 @@
 
 import { useState } from "react";
 import { useT } from "@/hooks/useT";
-import { moveToString, type Move } from "@/lib/cube";
+import { logMoveToString, moveToString } from "@/lib/cube";
 import { useGameStore } from "@/store/game";
 import { Button } from "./Button";
 
 const CHIP =
   "tnum inline-flex min-h-6 items-center rounded-[3px] border border-line px-1.5 text-[11px] font-semibold text-ink-soft";
+/** Rotations change the hold, so they read as background notes, not turns. */
+const ROTATION_CHIP =
+  "tnum inline-flex min-h-6 items-center rounded-[3px] px-1 text-[11px] font-semibold text-ink-soft/70";
 
-function Sequence({ moves, label }: { moves: readonly Move[]; label: string }) {
-  return (
-    <p className="mt-1.5 flex flex-wrap gap-1" aria-label={label}>
-      {moves.map((move, index) => (
-        <span key={`${moveToString(move)}-${index}`} className={CHIP}>
-          {moveToString(move)}
-        </span>
-      ))}
-    </p>
-  );
-}
-
-/** One titled row: heading, a move count, and the turn chips. */
+/** One titled row: heading, a move count, and the move chips. */
 function LogGroup({
   title,
   moves,
   label,
   empty,
+  rotations,
 }: {
   title: string;
-  moves: readonly Move[];
+  moves: readonly string[];
   label: string;
   empty?: string;
+  /** Indexes in `moves` that are rotations rather than turns. */
+  rotations?: ReadonlySet<number>;
 }) {
   const t = useT();
   return (
@@ -45,7 +39,16 @@ function LogGroup({
         ) : null}
       </div>
       {moves.length > 0 ? (
-        <Sequence moves={moves} label={label} />
+        <p className="mt-1.5 flex flex-wrap gap-1" aria-label={label}>
+          {moves.map((move, index) => (
+            <span
+              key={`${move}-${index}`}
+              className={rotations?.has(index) ? ROTATION_CHIP : CHIP}
+            >
+              {move}
+            </span>
+          ))}
+        </p>
       ) : empty ? (
         <p className="mt-1.5 text-[11px] text-ink-soft">{empty}</p>
       ) : null}
@@ -53,10 +56,25 @@ function LogGroup({
   );
 }
 
+/** Splits a stored solution into chips, noting which ones are rotations. */
+function solutionChips(solution: string | undefined): {
+  tokens: string[];
+  rotations: Set<number>;
+} {
+  if (!solution) return { tokens: [], rotations: new Set() };
+  const tokens = solution.split(/\s+/).filter((token) => token.length > 0);
+  const rotations = new Set<number>();
+  tokens.forEach((token, index) => {
+    if (/^[xyz]/.test(token)) rotations.add(index);
+  });
+  return { tokens, rotations };
+}
+
 /**
  * Move tracker. Lists the shuffle and every turn the player has applied, in
  * notation, so a solve can be replayed or analysed afterwards. The player log
- * is raw: an undone turn is recorded as the inverse turn it really was.
+ * is raw: an undone turn is recorded as the inverse turn it really was, and
+ * whole-cube rotations sit between the turns they preceded.
  *
  * When a saved record is being replayed, the tracker shows that record's saved
  * solution instead, since the board is rewriting the current log from scratch.
@@ -64,7 +82,7 @@ function LogGroup({
 export function MoveTracker() {
   const t = useT();
   const scramble = useGameStore((state) => state.scramble);
-  const history = useGameStore((state) => state.history);
+  const log = useGameStore((state) => state.log);
   const replayingId = useGameStore((state) => state.replayingId);
   const bestTimes = useGameStore((state) => state.bestTimes);
   const [copied, setCopied] = useState(false);
@@ -72,18 +90,16 @@ export function MoveTracker() {
   const replayed = replayingId
     ? bestTimes.find((entry) => entry.id === replayingId)
     : undefined;
-  const savedSolution = replayed
-    ? replayed.solution
-        .split(/\s+/)
-        .filter((token) => token.length > 0)
-        .map((token) => {
-          // Notation only; a single face letter is a physical face, and only
-          // the label matters here.
-          return { text: token };
-        })
-    : [];
+  const saved = solutionChips(replayed?.solution);
+  const logTokens = log.map(logMoveToString);
+  const logRotations = new Set(
+    log.reduce<number[]>((acc, entry, index) => {
+      if (entry.kind === "rotate") acc.push(index);
+      return acc;
+    }, []),
+  );
 
-  const empty = scramble.length === 0 && history.length === 0;
+  const empty = scramble.length === 0 && log.length === 0;
 
   async function copyLog() {
     const lines = replayed
@@ -97,10 +113,8 @@ export function MoveTracker() {
                 moves: scramble.map(moveToString).join(" "),
               })
             : null,
-          history.length > 0
-            ? t("tracker.clipMoves", {
-                moves: history.map(moveToString).join(" "),
-              })
+          log.length > 0
+            ? t("tracker.clipMoves", { moves: logTokens.join(" ") })
             : null,
         ].filter((line): line is string => line !== null);
     try {
@@ -138,29 +152,15 @@ export function MoveTracker() {
           </p>
           <LogGroup
             title={t("tracker.scramble")}
-            moves={scramble}
+            moves={scramble.map(moveToString)}
             label={t("tracker.scrambleAria")}
           />
-          <div>
-            <div className="flex items-baseline justify-between gap-2">
-              <h3 className="text-[11px] font-medium text-ink-soft">
-                {t("tracker.savedMoves")}
-              </h3>
-              <span className="text-[10px] text-ink-soft">
-                {t("common.movesCount", { count: replayed.moves })}
-              </span>
-            </div>
-            <p
-              className="mt-1.5 flex flex-wrap gap-1"
-              aria-label={t("tracker.savedMovesAria")}
-            >
-              {savedSolution.map((move, index) => (
-                <span key={`${move.text}-${index}`} className={CHIP}>
-                  {move.text}
-                </span>
-              ))}
-            </p>
-          </div>
+          <LogGroup
+            title={t("tracker.savedMoves")}
+            moves={saved.tokens}
+            rotations={saved.rotations}
+            label={t("tracker.savedMovesAria")}
+          />
         </div>
       ) : empty ? (
         <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
@@ -171,14 +171,15 @@ export function MoveTracker() {
           {scramble.length > 0 ? (
             <LogGroup
               title={t("tracker.scramble")}
-              moves={scramble}
+              moves={scramble.map(moveToString)}
               label={t("tracker.scrambleAria")}
             />
           ) : null}
 
           <LogGroup
             title={t("tracker.yourMoves")}
-            moves={history}
+            moves={logTokens}
+            rotations={logRotations}
             label={t("tracker.yourMovesAria")}
             empty={t("tracker.noMoves")}
           />

@@ -329,6 +329,8 @@ export const CUBE_ROTATION_FACE: Record<Axis, Face> = {
   z: "F",
 };
 
+const AXES: readonly Axis[] = ["x", "y", "z"];
+
 export function transposeMat(m: Mat3): Mat3 {
   return [m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]];
 }
@@ -360,6 +362,44 @@ export function rotateOrientation(
     throw new Error("Whole-cube rotation produced an invalid orientation.");
   }
   return { front, up };
+}
+
+/**
+ * Shortest sequence of whole-cube rotations (`x`/`y`/`z` with +/- turns) that
+ * turns one hold into another. Every hold is reachable in at most two quarter
+ * turns, so a breadth-first walk over the 24 holds is cheap.
+ */
+export function orientationPath(
+  from: CubeOrientation,
+  to: CubeOrientation,
+): { axis: Axis; turns: Turns }[] {
+  if (from.front === to.front && from.up === to.up) return [];
+  const key = (orientation: CubeOrientation) =>
+    `${orientation.front}${orientation.up}`;
+  const goal = key(to);
+  const seen = new Set([key(from)]);
+  const steps: [Axis, Turns][] = [];
+  for (const axis of AXES) {
+    for (const turns of [1, -1] as Turns[]) steps.push([axis, turns]);
+  }
+  type Node = { orientation: CubeOrientation; path: { axis: Axis; turns: Turns }[] };
+  let frontier: Node[] = [{ orientation: from, path: [] }];
+  while (frontier.length > 0) {
+    const next: Node[] = [];
+    for (const node of frontier) {
+      for (const [axis, turns] of steps) {
+        const orientation = rotateOrientation(node.orientation, axis, turns);
+        if (key(orientation) === goal) {
+          return [...node.path, { axis, turns }];
+        }
+        if (seen.has(key(orientation))) continue;
+        seen.add(key(orientation));
+        next.push({ orientation, path: [...node.path, { axis, turns }] });
+      }
+    }
+    frontier = next;
+  }
+  throw new Error("Orientation is unreachable by whole-cube rotations.");
 }
 
 /**
@@ -460,6 +500,47 @@ export function moveToString(move: Move): string {
   const wide = isWide(move) ? "w" : "";
   const face = move.logical ? move.face.toLowerCase() : move.face;
   return `${face}${wide}${move.turns === -1 ? "'" : ""}`;
+}
+
+/**
+ * One entry in a player's solve log: either a face/slice turn, or a whole-cube
+ * rotation (`x`, `y`, `z`) that only changes the hold. Rotations must ride along
+ * with the turns so a replay reproduces the same view the player had.
+ */
+export type LogMove =
+  | { readonly kind: "turn"; readonly move: Move }
+  | { readonly kind: "rotate"; readonly axis: Axis; readonly turns: Turns };
+
+export function logMoveToString(entry: LogMove): string {
+  return entry.kind === "rotate"
+    ? `${entry.axis}${entry.turns === -1 ? "'" : ""}`
+    : moveToString(entry.move);
+}
+
+export function parseLogMoves(input: string): LogMove[] {
+  const tokens = input.trim().length === 0 ? [] : input.trim().split(/\s+/);
+  return tokens.map((token) => {
+    const raw = token[0];
+    const upper = raw.toUpperCase();
+    const lower = raw.toLowerCase();
+    const turns: Turns = token.includes("'") ? -1 : 1;
+    // Rotation letters are always written lower-case, so the axis check runs on
+    // the raw letter before face parsing upper-cases it.
+    if (AXES.includes(lower as Axis)) {
+      return { kind: "rotate" as const, axis: lower as Axis, turns };
+    }
+    const logical = raw !== upper;
+    const name = upper as MoveName;
+    if (!isSlice(name) && !FACES.includes(name)) {
+      throw new Error(`Unknown face: ${token}`);
+    }
+    const wide = !isSlice(name) && /w/i.test(token);
+    const move: Move = wide ? { face: name, turns, wide: true } : { face: name, turns };
+    return {
+      kind: "turn" as const,
+      move: logical ? { ...move, logical: true } : move,
+    };
+  });
 }
 
 export function parseMoves(input: string): Move[] {

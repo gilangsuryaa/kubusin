@@ -3,7 +3,11 @@ import {
   applyMoves,
   createSolvedCube,
   DEFAULT_ORIENTATION,
+  invertMove,
+  isSolved,
+  orientationFaceMap,
   parseMoves,
+  type Face,
 } from "@/lib/cube";
 import { useGameStore } from "./game";
 
@@ -334,12 +338,68 @@ describe("record replay", () => {
     const { requestMove, commitActive } = useGameStore.getState();
     requestMove("R", 1);
     commitActive();
-    // Undo through the scramble: the recorded solution is the inverse turns,
-    // and each face turn is logged as the player named it.
+    // The hold change itself is part of the log, so the saved solution still
+    // means the same turns when it is replayed under the standard hold.
+    const log = useGameStore.getState().log;
+    expect(log[log.length - 1]).toEqual({
+      kind: "turn",
+      move: { face: "R", turns: 1, logical: true },
+    });
     expect(useGameStore.getState().moves).toEqual([{ face: "F", turns: 1 }]);
+  });
+
+  it("records whole-cube rotations in the log", () => {
+    useGameStore.setState({ runScrambled: true });
+    useGameStore.getState().rotateCube("y", 1);
+    useGameStore.getState().rotateCube("x", -1);
     expect(useGameStore.getState().log).toEqual([
-      { face: "R", turns: 1, logical: true },
+      { kind: "rotate", axis: "y", turns: 1 },
+      { kind: "rotate", axis: "x", turns: -1 },
     ]);
+  });
+
+  it("replays a run played under a rotated hold back to solved", () => {
+    // Four turns to undo, so the single-turn cancellation rule never applies.
+    const scramble = parseMoves("R U F' L");
+    useGameStore.setState({
+      runScrambled: true,
+      cubies: applyMoves(createSolvedCube(), scramble),
+      scramble,
+    });
+    // The player turns the whole cube before solving; the solve is then named
+    // in the rotated hold, which is what the saved log has to capture.
+    useGameStore.getState().rotateCube("y", 1);
+    const hold = useGameStore.getState().orientation;
+    const physicalToLabel = Object.fromEntries(
+      Object.entries(orientationFaceMap(hold.front, hold.up)).map(
+        ([label, physical]) => [physical, label],
+      ),
+    ) as Record<Face, Face>;
+    for (const move of [...scramble].reverse().map(invertMove)) {
+      useGameStore
+        .getState()
+        .requestMove(physicalToLabel[move.face as Face], move.turns);
+      useGameStore.getState().commitActive();
+    }
+
+    const recorded = useGameStore.getState();
+    expect(recorded.status).toBe("solved");
+    const entry = recorded.bestTimes[0];
+    expect(entry.solution).toBe("y b' l u' f'");
+
+    // Replay: the rotation must run too, or every turn after it means the wrong
+    // physical face and the cube never solves.
+    useGameStore.getState().requestReset();
+    useGameStore.getState().replayRecord(entry.id);
+    for (;;) {
+      const state = useGameStore.getState();
+      if (!state.active && state.queue.length === 0) break;
+      state.commitActive();
+    }
+    const replayed = useGameStore.getState();
+    expect(replayed.status).toBe("solved");
+    expect(isSolved(replayed.cubies)).toBe(true);
+    expect(replayed.orientation).toEqual(hold);
   });
 
   it("replays the scramble and solution on the board", () => {
