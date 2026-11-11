@@ -1,12 +1,25 @@
 # Kubusin
 
 Kubus Rubik 3D di browser. Putar tiap sisi lewat keyboard atau sentuhan, acak
-kubus, ukur waktu, dan simpan sepuluh rekor terbaik.
+kubus, ukur waktu, dan simpan riwayat rekor terbaik.
 
 ![Kubus Rubik 3D Kubusin](docs/kubusin-hero.png)
 
-Next.js (App Router) + TypeScript strict + Tailwind CSS + three.js
-(`@react-three/fiber`, `@react-three/drei`) + Zustand.
+## Teknologi
+
+| Teknologi | Peran |
+| --- | --- |
+| [Next.js](https://nextjs.org) (App Router) 16 | Kerangka aplikasi, rendering, dan routing |
+| [React](https://react.dev) 19 + [TypeScript](https://www.typescriptlang.org) strict | UI komponen dan pengetikan yang ketat |
+| [three.js](https://threejs.org) + [@react-three/fiber](https://docs.pmnd.rs/react-three-fiber) + [@react-three/drei](https://github.com/pmndrs/drei) | Render 3D kubus, kamera, bayangan, dan animasi lapisan |
+| [Tailwind CSS](https://tailwindcss.com) 4 | Gaya antarmuka, tema terang/gelap lewat token CSS |
+| [Zustand](https://zustand.docs.pmnd.rs) | State permainan: langkah, antrean animasi, timer, rekor |
+| [rubik-solver](https://github.com/ldez/rubik-solver) | Solusi optimal untuk metode "Optimal" (dimuat dinamis) |
+| [Web Audio API](https://developer.mozilla.org/docs/Web/API/Web_Audio_API) | Efek suara sintetis tanpa berkas audio |
+| [Vitest](https://vitest.dev) + [ESLint](https://eslint.org) | Unit test dan pemeriksaan kode |
+
+Logika kubus (`lib/cube.ts`) sengaja murni — tanpa three.js — sehingga bisa
+diuji langsung di Node.
 
 ## Menjalankan
 
@@ -82,6 +95,18 @@ acakan (saat sistem mengacak) dan setiap langkah yang kamu putar, berurutan.
 Undo tercatat sebagai langkah kebalikannya, karena itulah yang benar-benar
 terjadi pada kubus. Tombol **Salin** menyalin keduanya sebagai teks.
 
+## Rekor
+
+Panel **Rekor terbaik** menyimpan setiap penyelesaian (hingga 200 entri) beserta
+waktu, jumlah langkah, tanggal, dan seluruh langkahnya. Daftar bisa diurutkan
+**Tercepat** atau **Terbaru** untuk melihat progress dari waktu ke waktu.
+
+**Putar ulang** memutar kembali acakan dan langkah rekor di papan dengan waktu
+baru; rotasi `x` `y` `z` ikut direkam, jadi rekor yang dimainkan pada hold
+non-standar tetap selesai. Selama putar ulang, slider **Kecepatan**
+(0.25x–2x) mengatur tempo untuk analisis. Tombol `✕` menghapus satu rekor
+setelah konfirmasi.
+
 ## Efek suara
 
 Setiap putaran sisi berbunyi klik pendek, dan kubus yang selesai memainkan
@@ -120,12 +145,14 @@ Logika kubus terpisah dari tampilan dan diuji langsung di Node.
 
 ## Test
 
-`pnpm test` menjalankan 83 tes: `lib/cube.test.ts` (model kubus: langkah,
-slice, wide, orientasi, acak, deteksi selesai), `store/game.test.ts` (alur
-sesi, antrean, undo, gating rekor, panduan, metode, pencatat gerakan, preferensi
-suara), `lib/guide.test.ts` (pembanding keadaan kubus dan kursor rencana),
-`lib/sound.test.ts` (efek suara aman tanpa Web Audio), dan `lib/solver.test.ts`
-(solver metode pemula dan CFOP, batas antar tahap, facelet, dan solusi optimal).
+`pnpm test` menjalankan 95 tes: `lib/cube.test.ts` (model kubus: langkah,
+slice, wide, notasi orientasi, acak, deteksi selesai),
+`store/game.test.ts` (alur sesi, antrean, undo, gating rekor, panduan, metode,
+pencatat gerakan, putar ulang termasuk rotasi dan kecepatan, hapus rekor,
+preferensi suara), `lib/guide.test.ts` (pembanding keadaan kubus dan kursor
+rencana), `lib/sound.test.ts` (efek suara aman tanpa Web Audio), dan
+`lib/solver.test.ts` (solver metode pemula dan CFOP, batas antar tahap, facelet,
+dan solusi optimal).
 
 ## Lisensi
 
