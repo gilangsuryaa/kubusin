@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: "%s · Kubusin",
   },
   description:
-    "Kubus Rubik 3D yang dimainkan di browser. Putar sisi dengan keyboard atau sentuhan, acak kubus, ukur waktu, dan simpan sepuluh rekor terbaikmu.",
+    "Kubus Rubik 3D yang dimainkan di browser. Putar sisi dengan keyboard atau sentuhan, acak kubus, ukur waktu, dan simpan riwayat rekor terbaikmu.",
   applicationName: "Kubusin",
   keywords: [
     "kubusin",
@@ -48,6 +48,23 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+/**
+ * Structured data so search engines see this as a game, not just a page: the
+ * description mirrors the meta description to keep one voice.
+ */
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "Kubusin",
+  applicationCategory: "GameApplication",
+  operatingSystem: "Web",
+  description:
+    "Kubus Rubik 3D yang dimainkan di browser. Putar sisi dengan keyboard atau sentuhan, acak kubus, ukur waktu, dan simpan rekor terbaikmu.",
+  url: siteUrl,
+  inLanguage: ["id", "en"],
+  offers: { "@type": "Offer", price: "0", priceCurrency: "IDR" },
+};
+
 export const viewport = {
   width: "device-width",
   initialScale: 1,
@@ -73,6 +90,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body className="min-h-full bg-bg text-ink">{children}</body>
     </html>
